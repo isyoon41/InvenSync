@@ -41,8 +41,8 @@ export function ReviewReport({
             <h1 className="text-2xl font-bold text-gray-900">Review Report</h1>
             {isApproved && (
               <p className="text-sm text-green-600 mt-1">
-                ✓ Approved by {report.approvedBy?.name} on{' '}
-                {new Date(report.approvedAt).toLocaleDateString()}
+                ✓ Approved by {(report as any).approvedBy?.name ?? report.approvedByUserId} on{' '}
+                {report.approvedAt ? new Date(report.approvedAt).toLocaleDateString() : ''}
               </p>
             )}
           </div>

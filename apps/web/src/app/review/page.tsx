@@ -135,7 +135,7 @@ export default function ReviewPage() {
                       <tr key={report.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {report.inquiry?.proposedMarkName || 'Unknown Mark'}
+                            {(report as any).inquiry?.proposedMarkName || 'Unknown Mark'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

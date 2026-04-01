@@ -42,7 +42,7 @@ export class SearchExecuteWorkflow {
       });
 
       // Get candidates to search for
-      let candidates = [];
+      let candidates: import("@ip-review/domain").GoodsCandidate[] = [];
       if (searchJob.candidateRunId) {
         candidates = await this.repositories.candidates.findSelectedByRun(
           searchJob.candidateRunId

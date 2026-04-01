@@ -55,7 +55,7 @@ export interface IInboxPort {
   refreshToken?(refreshToken: string): Promise<string>;
 }
 
-export interface InboxProvider {
+export interface IInboxProviderInfo {
   getProvider(): InboxProvider;
   getAuthType(): InboxAuthType;
   supportedAuthTypes(): InboxAuthType[];
