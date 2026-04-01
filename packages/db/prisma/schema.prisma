@@ -1,0 +1,499 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  reviewer
+  operator
+}
+
+enum InquiryStatus {
+  new
+  parsed
+  candidate_ready
+  searched
+  reviewed
+  approved
+  exported
+}
+
+enum InquirySourceChannel {
+  manual
+  gmail_forward
+  gmail_api
+}
+
+enum InboxProvider {
+  gmail
+  outlook
+}
+
+enum InboxAuthType {
+  oauth
+  app_password
+  manual
+}
+
+enum GoodsTermType {
+  official_notice_name
+  accepted_similar_name
+}
+
+enum CandidateRunState {
+  running
+  done
+  failed
+}
+
+enum CandidateSourceType {
+  official_notice_name
+  accepted_similar_name
+  ai_generated
+  manual
+  competitor_reference
+}
+
+enum SearchSourceSystem {
+  kipris
+  mock
+  python_sidecar
+}
+
+enum SearchMode {
+  exact_mark
+  mark_keyword
+  designated_goods
+  class_no
+  similarity_group
+}
+
+enum SearchJobState {
+  queued
+  running
+  done
+  failed
+}
+
+enum ExportFormat {
+  clipboard
+  csv
+  json
+}
+
+enum JobStatus {
+  queued
+  running
+  done
+  failed
+  retrying
+  cancelled
+}
+
+model Firm {
+  id            String         @id @default(cuid())
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  users         User[]
+  clients       Client[]
+  inquiries     Inquiry[]
+  inboxAccounts InboxAccount[]
+}
+
+model User {
+  id              String       @id @default(cuid())
+  firmId          String
+  name            String
+  email           String       @unique
+  role            UserRole     @default(operator)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  firm            Firm         @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  ownedInquiries  Inquiry[]    @relation("InquiryOwner")
+  candidateRuns   CandidateRun[] @relation("CandidateRunCreatedBy")
+  searchJobs      SearchJob[]  @relation("SearchJobCreatedBy")
+  approvedReports ReviewReport[] @relation("ReviewReportApprovedBy")
+
+  @@index([firmId])
+}
+
+model Client {
+  id          String     @id @default(cuid())
+  firmId      String
+  name        String
+  companyName String?
+  email       String?
+  phone       String?
+  memo        String?    @db.Text
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  firm        Firm       @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  inquiries   Inquiry[]
+
+  @@index([firmId])
+  @@index([companyName])
+}
+
+model InboxAccount {
+  id           String        @id @default(cuid())
+  firmId       String
+  provider     InboxProvider
+  accountEmail String        @unique
+  authType     InboxAuthType @default(oauth)
+  accessToken  String?       @db.Text
+  refreshToken String?       @db.Text
+  labelFilter  String?
+  lastCursor   String?
+  isActive     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  firm         Firm          @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  inquiries    Inquiry[]
+
+  @@index([firmId])
+  @@index([isActive])
+}
+
+model ClassificationVersion {
+  id            String     @id @default(cuid())
+  label         String     @unique
+  sourceName    String
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  inquiries     Inquiry[]
+  goodsTerms    GoodsTerm[]
+}
+
+model GoodsTerm {
+  id                      String       @id @default(cuid())
+  classificationVersionId String
+  term                    String
+  classNo                 Int
+  termType                GoodsTermType
+  isActive                Boolean      @default(true)
+  sourcePage              String?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  classificationVersion   ClassificationVersion @relation(fields: [classificationVersionId], references: [id], onDelete: Cascade)
+  similarityGroups        GoodsTermSimilarityGroup[]
+
+  @@index([classificationVersionId, classNo])
+  @@index([term])
+}
+
+model GoodsTermSimilarityGroup {
+  id                  String   @id @default(cuid())
+  goodsTermId         String
+  similarityGroupCode String
+  isPrimary           Boolean  @default(false)
+
+  goodsTerm           GoodsTerm @relation(fields: [goodsTermId], references: [id], onDelete: Cascade)
+
+  @@index([goodsTermId])
+  @@index([similarityGroupCode])
+}
+
+model Inquiry {
+  id                     String               @id @default(cuid())
+  firmId                 String
+  clientId               String?
+  inboxAccountId         String?
+  ownerUserId            String?
+  classificationVersionId String?
+  sourceChannel          InquirySourceChannel @default(manual)
+  title                  String
+  subject                String?
+  rawText                String               @db.Text
+  rawHtml                String?              @db.Text
+  senderEmail            String?
+  proposedMarkName       String?
+  metadata               Json?
+  status                 InquiryStatus        @default(new)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  firm                   Firm                 @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  client                 Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  inboxAccount           InboxAccount?        @relation(fields: [inboxAccountId], references: [id], onDelete: SetNull)
+  owner                  User?                @relation("InquiryOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  classificationVersion  ClassificationVersion? @relation(fields: [classificationVersionId], references: [id], onDelete: SetNull)
+
+  attachments            InquiryAttachment[]
+  parsedRequests         ParsedRequest[]
+  candidateRuns          CandidateRun[]
+  searchJobs             SearchJob[]
+  reviewReports          ReviewReport[]
+  caseDrafts             CaseDraft[]
+
+  @@index([firmId])
+  @@index([status, updatedAt])
+  @@index([ownerUserId])
+  @@index([clientId])
+}
+
+model InquiryAttachment {
+  id        String   @id @default(cuid())
+  inquiryId String
+  fileName  String
+  mimeType  String
+  fileUrl   String
+  sizeBytes Int?
+  createdAt DateTime @default(now())
+
+  inquiry   Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+}
+
+model ParsedRequest {
+  id                         String   @id @default(cuid())
+  inquiryId                  String
+  llmProvider                String?
+  llmModel                   String?
+  parsedJson                 Json
+  markNameNormalized         String?
+  goodsDescriptionNormalized String?
+  industryGuess              String?
+  missingFields              Json?
+  confidence                 Float?
+  isCurrent                  Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+
+  inquiry                    Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId, isCurrent])
+}
+
+model CandidateRun {
+  id              String            @id @default(cuid())
+  inquiryId       String
+  createdByUserId String?
+  state           CandidateRunState @default(running)
+  runVersion      Int
+  inputSnapshot   Json
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  inquiry         Inquiry           @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  createdBy       User?             @relation("CandidateRunCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  goodsCandidates GoodsCandidate[]
+  searchJobs      SearchJob[]
+  reviewReports   ReviewReport[]
+
+  @@unique([inquiryId, runVersion])
+  @@index([inquiryId])
+}
+
+model GoodsCandidate {
+  id               String               @id @default(cuid())
+  candidateRunId   String
+  term             String
+  normalizedTerm   String?
+  classNo          Int
+  sourceType       CandidateSourceType
+  confidence       Float                @default(0)
+  rationale        String               @db.Text
+  isSelected       Boolean              @default(false)
+  sortOrder        Int                  @default(0)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  candidateRun     CandidateRun         @relation(fields: [candidateRunId], references: [id], onDelete: Cascade)
+  similarityGroups GoodsCandidateSimilarityGroup[]
+
+  @@index([candidateRunId])
+  @@index([classNo])
+  @@index([isSelected])
+}
+
+model GoodsCandidateSimilarityGroup {
+  id                  String         @id @default(cuid())
+  goodsCandidateId    String
+  similarityGroupCode String
+  isPrimary           Boolean        @default(false)
+
+  goodsCandidate      GoodsCandidate @relation(fields: [goodsCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([goodsCandidateId])
+  @@index([similarityGroupCode])
+}
+
+model SearchJob {
+  id              String         @id @default(cuid())
+  inquiryId       String
+  candidateRunId  String?
+  createdByUserId String?
+  state           SearchJobState @default(queued)
+  queryStrategy   Json?
+  createdAt       DateTime       @default(now())
+  completedAt     DateTime?
+  updatedAt       DateTime       @updatedAt
+
+  inquiry         Inquiry        @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  candidateRun    CandidateRun?  @relation(fields: [candidateRunId], references: [id], onDelete: SetNull)
+  createdBy       User?          @relation("SearchJobCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  queries         SearchQuery[]
+  results         SearchResult[]
+  reviewReports   ReviewReport[]
+
+  @@index([inquiryId])
+  @@index([state])
+}
+
+model SearchQuery {
+  id            String             @id @default(cuid())
+  searchJobId   String
+  sourceSystem  SearchSourceSystem
+  mode          SearchMode
+  requestParams Json
+  queryHash     String
+  cacheHit      Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+
+  searchJob     SearchJob          @relation(fields: [searchJobId], references: [id], onDelete: Cascade)
+
+  @@index([searchJobId])
+  @@index([queryHash])
+}
+
+model SearchResult {
+  id                     String             @id @default(cuid())
+  searchJobId            String
+  sourceSystem           SearchSourceSystem
+  mode                   SearchMode
+  applicationNumber      String?
+  registerNumber         String?
+  markName               String
+  applicantName          String?
+  classNo                Int?
+  designatedGoodsSummary String?            @db.Text
+  statusLabel            String?
+  sampleImageUrl         String?
+  relevanceScore         Float?
+  detailJson             Json?
+  rawXml                 String?            @db.Text
+  isShortlisted          Boolean            @default(false)
+  createdAt              DateTime           @default(now())
+
+  searchJob              SearchJob          @relation(fields: [searchJobId], references: [id], onDelete: Cascade)
+  similarityGroups       SearchResultSimilarityGroup[]
+  reviewEvidences        ReviewEvidence[]
+
+  @@index([searchJobId])
+  @@index([applicationNumber])
+  @@index([markName])
+  @@index([classNo])
+}
+
+model SearchResultSimilarityGroup {
+  id                  String       @id @default(cuid())
+  searchResultId      String
+  similarityGroupCode String
+
+  searchResult        SearchResult @relation(fields: [searchResultId], references: [id], onDelete: Cascade)
+
+  @@index([searchResultId])
+  @@index([similarityGroupCode])
+}
+
+model ReviewReport {
+  id               String       @id @default(cuid())
+  inquiryId        String
+  candidateRunId   String?
+  searchJobId      String?
+  summary          String?      @db.Text
+  riskNote         String?      @db.Text
+  recommendation   String?      @db.Text
+  clientReplyDraft String?      @db.Text
+  internalNote     String?      @db.Text
+  approvedByUserId String?
+  approvedAt       DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  inquiry          Inquiry      @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  candidateRun     CandidateRun? @relation(fields: [candidateRunId], references: [id], onDelete: SetNull)
+  searchJob        SearchJob?   @relation(fields: [searchJobId], references: [id], onDelete: SetNull)
+  approvedBy       User?        @relation("ReviewReportApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  evidences        ReviewEvidence[]
+  caseDrafts       CaseDraft[]
+
+  @@index([inquiryId])
+}
+
+model ReviewEvidence {
+  id             String       @id @default(cuid())
+  reviewReportId String
+  searchResultId String
+  note           String?      @db.Text
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+
+  reviewReport   ReviewReport @relation(fields: [reviewReportId], references: [id], onDelete: Cascade)
+  searchResult   SearchResult @relation(fields: [searchResultId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewReportId, searchResultId])
+  @@index([searchResultId])
+}
+
+model CaseDraft {
+  id           String       @id @default(cuid())
+  inquiryId    String
+  reviewReportId String
+  draftJson    Json
+  exportFormat ExportFormat @default(clipboard)
+  exportedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  inquiry      Inquiry      @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  reviewReport ReviewReport @relation(fields: [reviewReportId], references: [id], onDelete: Cascade)
+
+  @@index([inquiryId])
+  @@index([reviewReportId])
+}
+
+model Job {
+  id         String    @id @default(cuid())
+  type       String
+  payload    Json
+  status     JobStatus @default(queued)
+  attempts   Int       @default(0)
+  runAt      DateTime  @default(now())
+  lockedAt   DateTime?
+  lockedBy   String?
+  lastError  String?   @db.Text
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status, runAt])
+}
+
+model ExternalApiCache {
+  id         String    @id @default(cuid())
+  namespace  String
+  keyHash    String    @unique
+  payload    Json
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([namespace, expiresAt])
+}

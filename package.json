@@ -1,0 +1,28 @@
+{
+  "name": "ip-review-desk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev --parallel",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test": "turbo test",
+    "db:migrate": "turbo db:migrate",
+    "db:seed": "turbo db:seed",
+    "db:studio": "pnpm --filter=@ip-review/db prisma studio",
+    "db:reset": "pnpm --filter=@ip-review/db prisma migrate reset --force",
+    "format": "prettier --write .",
+    "clean": "turbo clean && find . -type d -name node_modules -prune -exec rm -rf {} \\;"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "turbo": "^1.13.2",
+    "typescript": "^5.3.3"
+  },
+  "packageManager": "pnpm@9.0.0"
+}
