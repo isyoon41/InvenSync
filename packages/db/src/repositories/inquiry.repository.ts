@@ -1,4 +1,4 @@
-import type { IInquiryRepository, Inquiry, CreateInquiryInput, UpdateInquiryInput, ListOptions, ListResult } from "@ip-review/domain";
+import type { IInquiryRepository, Inquiry, CreateInquiryInput, UpdateInquiryInput, ListOptions, ListResult, InquiryStatus } from "@ip-review/domain";
 import { prisma } from "../client";
 
 export class InquiryRepository implements IInquiryRepository {
@@ -76,7 +76,7 @@ export class InquiryRepository implements IInquiryRepository {
 
   async findByStatus(
     firmId: string,
-    status: string,
+    status: InquiryStatus,
     options?: ListOptions
   ): Promise<ListResult<Inquiry>> {
     return this.list({
@@ -110,7 +110,7 @@ export class InquiryRepository implements IInquiryRepository {
 
   async findByStatusAndUpdated(
     firmId: string,
-    status: string,
+    status: InquiryStatus,
     since: Date
   ): Promise<Inquiry[]> {
     return prisma.inquiry.findMany({

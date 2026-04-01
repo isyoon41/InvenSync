@@ -16,6 +16,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@ip-review/domain": "workspace:*",
     "@prisma/client": "^5.9.1"
   },
   "devDependencies": {

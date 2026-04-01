@@ -1,4 +1,4 @@
-import type { ITrademarkSearchPort, SearchJob, SearchResult } from "@ip-review/domain";
+import type { ITrademarkSearchPort, SearchResult } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";

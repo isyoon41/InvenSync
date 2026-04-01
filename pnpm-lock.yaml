@@ -38,6 +38,9 @@ importers:
       '@ip-review/workflows':
         specifier: workspace:*
         version: link:../../packages/workflows
+      '@prisma/client':
+        specifier: ^5.9.1
+        version: 5.22.0(prisma@5.22.0)
       next:
         specifier: ^14.1.0
         version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -75,6 +78,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@ip-review/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@prisma/client':
         specifier: ^5.9.1
         version: 5.22.0(prisma@5.22.0)
@@ -107,6 +113,9 @@ importers:
         specifier: workspace:*
         version: link:../domain
     devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
       typescript:
         specifier: ^5.3.3
         version: 5.9.3

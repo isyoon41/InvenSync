@@ -1,4 +1,4 @@
-import type { ILLMPort, Inquiry, GeneratedCandidate } from "@ip-review/domain";
+import type { ILLMPort, GeneratedCandidate } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";

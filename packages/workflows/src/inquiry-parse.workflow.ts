@@ -55,7 +55,7 @@ export class InquiryParseWorkflow {
           inquiryId: inquiry.id,
           llmProvider: "openai", // TODO: Extract from LLM provider
           llmModel: "gpt-4",
-          parsedJson: parsedData,
+          parsedJson: parsedData as any,
           markNameNormalized: parsedData.markNameNormalized,
           goodsDescriptionNormalized: parsedData.goodsDescriptionNormalized,
           industryGuess: parsedData.industry,

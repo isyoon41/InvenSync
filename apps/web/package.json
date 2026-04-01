@@ -14,6 +14,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "next-auth": "^4.24.7",
+    "@prisma/client": "^5.9.1",
     "@ip-review/db": "workspace:*",
     "@ip-review/domain": "workspace:*",
     "@ip-review/workflows": "workspace:*"
