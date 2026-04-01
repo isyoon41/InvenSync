@@ -6,8 +6,8 @@ const nextConfig = {
     '@ip-review/workflows',
   ],
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
 };
 
-export default nextConfig;
+module.exports = nextConfig;
