@@ -3,26 +3,35 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import type { ReviewReport } from '@ip-review/domain';
 
 export default function ReviewPage() {
+  const { data: session } = useSession();
   const [reports, setReports] = useState<ReviewReport[]>([]);
   const [pendingReports, setPendingReports] = useState<ReviewReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved'>('pending');
 
   useEffect(() => {
+    if (!session?.user?.firmId) {
+      setLoading(false);
+      return;
+    }
+
     const fetchReports = async () => {
       try {
+        const firmId = session.user.firmId;
+
         // Fetch pending approval reports
         const pendingRes = await fetch(
-          '/api/review-reports?firmId=demo-firm&pendingApproval=true'
+          `/api/review-reports?firmId=${encodeURIComponent(firmId)}&pendingApproval=true`
         );
         const pendingData = await pendingRes.json();
         setPendingReports(pendingData.items || []);
 
         // Fetch approved reports
-        const approvedRes = await fetch('/api/review-reports?firmId=demo-firm&since=2024-01-01');
+        const approvedRes = await fetch(`/api/review-reports?firmId=${encodeURIComponent(firmId)}&since=2024-01-01`);
         const approvedData = await approvedRes.json();
         setReports(approvedData.items || []);
       } catch (error) {
@@ -33,13 +42,17 @@ export default function ReviewPage() {
     };
 
     fetchReports();
-  }, []);
+  }, [session?.user?.firmId]);
 
   const displayReports = filter === 'pending' ? pendingReports : reports;
 
   return (
     <>
-      <Header firmName="IP Review Desk" userName="홍준" userRole="Reviewer" />
+      <Header
+        firmName={session?.user?.firmId || 'IP Review Desk'}
+        userName={session?.user?.name || 'User'}
+        userRole={session?.user?.role || 'Reviewer'}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">

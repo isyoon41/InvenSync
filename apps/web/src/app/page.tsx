@@ -1,11 +1,18 @@
 import React from 'react';
 import { Header } from '@/components';
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  const firmName = session?.user?.firmId || 'IP Review Desk';
+  const userName = session?.user?.name || 'User';
+  const userRole = session?.user?.role || 'Viewer';
+
   return (
     <>
-      <Header firmName="IP Review Desk" userName="윤인식" userRole="Admin" />
+      <Header firmName={firmName} userName={userName} userRole={userRole} />
 
       <main>
         {/* Hero Section */}
