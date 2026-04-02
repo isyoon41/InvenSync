@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header, ReviewReport } from '@/components';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import type { ReviewReport as ReviewReportType } from '@ip-review/domain';
 
 interface PageProps {
@@ -12,6 +13,7 @@ interface PageProps {
 }
 
 export default function ReviewDetailPage({ params }: PageProps) {
+  const { data: session } = useSession();
   const [report, setReport] = useState<ReviewReportType | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,7 +57,7 @@ export default function ReviewDetailPage({ params }: PageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          approvedByUserId: 'user-1', // TODO: Get from session
+          approvedByUserId: session?.user?.id || 'unknown',
         }),
       });
       const approved = await res.json();
@@ -68,7 +70,11 @@ export default function ReviewDetailPage({ params }: PageProps) {
   if (loading) {
     return (
       <>
-        <Header firmName="IP Review Desk" />
+        <Header
+          firmName={session?.user?.firmId || 'IP Review Desk'}
+          userName={session?.user?.name || 'User'}
+          userRole={session?.user?.role || 'Viewer'}
+        />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">Loading...</div>
         </main>
@@ -79,7 +85,11 @@ export default function ReviewDetailPage({ params }: PageProps) {
   if (!report) {
     return (
       <>
-        <Header firmName="IP Review Desk" />
+        <Header
+          firmName={session?.user?.firmId || 'IP Review Desk'}
+          userName={session?.user?.name || 'User'}
+          userRole={session?.user?.role || 'Viewer'}
+        />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">Report not found</div>
         </main>
@@ -89,7 +99,11 @@ export default function ReviewDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <Header firmName="IP Review Desk" userName="홍준" userRole="Reviewer" />
+      <Header
+        firmName={session?.user?.firmId || 'IP Review Desk'}
+        userName={session?.user?.name || 'User'}
+        userRole={session?.user?.role || 'Viewer'}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center gap-4">

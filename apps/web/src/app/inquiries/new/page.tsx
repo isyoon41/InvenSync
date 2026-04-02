@@ -1,16 +1,25 @@
 import React from 'react';
 import { Header } from '@/components';
 import { InquiryForm } from '@/components/forms/InquiryForm';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function NewInquiryPage() {
-  const firmId = 'demo-firm'; // TODO: Get from session
+export default async function NewInquiryPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.firmId) {
+    redirect('/login');
+  }
+
+  const firmId = session.user.firmId;
 
   return (
     <>
       <Header
-        firmName="IP Review Desk Demo Firm"
-        userName="윤인식"
-        userRole="Admin"
+        firmName={session.user.firmId || 'IP Review Desk'}
+        userName={session.user.name || 'User'}
+        userRole={session.user.role || 'Viewer'}
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

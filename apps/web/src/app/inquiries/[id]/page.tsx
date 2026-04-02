@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Header, InquiryDetail, CandidateReview, SearchResults, NormalizationPanel } from '@/components';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import type { Inquiry, GoodsCandidate, SearchResult, ParsedInquiryData } from '@ip-review/domain';
 
 interface PageProps {
@@ -12,6 +13,7 @@ interface PageProps {
 }
 
 export default function InquiryDetailPage({ params }: PageProps) {
+  const { data: session } = useSession();
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
   const [parsedData, setParsedData] = useState<ParsedInquiryData | null>(null);
   const [candidates, setCandidates] = useState<GoodsCandidate[]>([]);
@@ -108,7 +110,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
   if (loading) {
     return (
       <>
-        <Header firmName="IP Review Desk" />
+        <Header
+          firmName={session?.user?.firmId || 'IP Review Desk'}
+          userName={session?.user?.name || 'User'}
+          userRole={session?.user?.role || 'Viewer'}
+        />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">Loading...</div>
         </main>
@@ -119,7 +125,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
   if (!inquiry) {
     return (
       <>
-        <Header firmName="IP Review Desk" />
+        <Header
+          firmName={session?.user?.firmId || 'IP Review Desk'}
+          userName={session?.user?.name || 'User'}
+          userRole={session?.user?.role || 'Viewer'}
+        />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">Inquiry not found</div>
         </main>
@@ -129,7 +139,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
 
   return (
     <>
-      <Header firmName="IP Review Desk" />
+      <Header
+        firmName={session?.user?.firmId || 'IP Review Desk'}
+        userName={session?.user?.name || 'User'}
+        userRole={session?.user?.role || 'Viewer'}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center gap-4">
