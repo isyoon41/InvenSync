@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@ip-review/db": ["../../packages/db/src"],
+      "@ip-review/db/*": ["../../packages/db/src/*"],
+      "@ip-review/domain": ["../../packages/domain/src"],
+      "@ip-review/domain/*": ["../../packages/domain/src/*"],
+      "@ip-review/workflows": ["../../packages/workflows/src"],
+      "@ip-review/workflows/*": ["../../packages/workflows/src/*"]
+    }
+  }
+}
