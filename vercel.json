@@ -36,5 +36,13 @@
       "value": "https://invensync-tm-assistant.vercel.app",
       "type": "plain"
     }
-  ]
+  ],
+  "buildCache": {
+    "source": "previous"
+  },
+  "projectSettings": {
+    "name": "InvenSync-TM-Assistant",
+    "description": "Trademark review automation webapp for Korean law firms"
+  }
 }
+
