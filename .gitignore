@@ -37,6 +37,9 @@ yarn-error.log*
 .turbo/
 turbo.json.local
 
+# Node compile cache
+node-compile-cache/
+
 # Prisma
 .env
 .env.*.local
