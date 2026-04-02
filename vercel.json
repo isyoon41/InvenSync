@@ -12,6 +12,16 @@
       "type": "secret"
     },
     {
+      "key": "GOOGLE_AISTUDIO_API_KEY",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "KIPRIS_API_KEY",
+      "value": "",
+      "type": "secret"
+    },
+    {
       "key": "DATABASE_URL",
       "value": "",
       "type": "secret"
