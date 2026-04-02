@@ -1,0 +1,30 @@
+{
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": "apps/web/.next",
+  "regions": ["icn1"],
+  "env": [
+    {
+      "key": "ANTHROPIC_API_KEY",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "DATABASE_URL",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "NEXTAUTH_SECRET",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "NEXTAUTH_URL",
+      "value": "https://invensync-tm-assistant.vercel.app",
+      "type": "plain"
+    }
+  ]
+}
