@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create inquiry
+    // Create inquiry with extended metadata
     const inquiry = await repositories.inquiries.create({
       firmId: body.firmId,
       clientId: body.clientId,
@@ -28,7 +28,13 @@ export async function POST(request: NextRequest) {
       rawHtml: body.rawHtml,
       senderEmail: body.senderEmail,
       proposedMarkName: body.proposedMarkName,
-      metadata: body.metadata,
+      metadata: {
+        ...body.metadata,
+        clientName: body.clientName,
+        companyName: body.companyName,
+        tags: body.tags || [],
+        attachmentCount: body.attachmentCount || 0,
+      },
     });
 
     return NextResponse.json(inquiry, { status: 201 });

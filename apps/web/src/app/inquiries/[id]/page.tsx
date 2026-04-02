@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Header, InquiryDetail, CandidateReview, SearchResults } from '@/components';
+import { Header, InquiryDetail, CandidateReview, SearchResults, NormalizationPanel } from '@/components';
 import Link from 'next/link';
-import type { Inquiry, GoodsCandidate, SearchResult } from '@ip-review/domain';
+import type { Inquiry, GoodsCandidate, SearchResult, ParsedInquiryData } from '@ip-review/domain';
 
 interface PageProps {
   params: {
@@ -13,9 +13,11 @@ interface PageProps {
 
 export default function InquiryDetailPage({ params }: PageProps) {
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
+  const [parsedData, setParsedData] = useState<ParsedInquiryData | null>(null);
   const [candidates, setCandidates] = useState<GoodsCandidate[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [parsing, setParsing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'search'>('overview');
 
@@ -26,6 +28,19 @@ export default function InquiryDetailPage({ params }: PageProps) {
         const res = await fetch(`/api/inquiries/${params.id}`);
         const data = await res.json();
         setInquiry(data);
+
+        // Fetch parsed data if available
+        if (data.status !== 'new') {
+          try {
+            const parsedRes = await fetch(`/api/inquiries/${params.id}/parsed-data`);
+            if (parsedRes.ok) {
+              const parsedDataResult = await parsedRes.json();
+              setParsedData(parsedDataResult);
+            }
+          } catch (e) {
+            console.warn('Could not fetch parsed data:', e);
+          }
+        }
 
         // Fetch candidates if available
         if (data.status !== 'new') {
@@ -49,6 +64,28 @@ export default function InquiryDetailPage({ params }: PageProps) {
 
     fetchInquiry();
   }, [params.id]);
+
+  const handleParse = async () => {
+    setParsing(true);
+    try {
+      const res = await fetch(`/api/inquiries/${params.id}/parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const result = await res.json();
+      if (result.inquiry) {
+        setInquiry(result.inquiry);
+      }
+      if (result.parsedData) {
+        setParsedData(result.parsedData);
+      }
+    } catch (error) {
+      console.error('Failed to parse inquiry:', error);
+      alert('Failed to parse inquiry. Check console for details.');
+    } finally {
+      setParsing(false);
+    }
+  };
 
   const handleProcess = async () => {
     setProcessing(true);
@@ -105,9 +142,21 @@ export default function InquiryDetailPage({ params }: PageProps) {
 
         <InquiryDetail
           inquiry={inquiry}
-          onProcess={handleProcess}
-          processing={processing}
+          onProcess={inquiry.status === 'new' ? handleParse : handleProcess}
+          processing={inquiry.status === 'new' ? parsing : processing}
         />
+
+        {/* Normalization Panel */}
+        {(inquiry.status !== 'new' || parsedData) && (
+          <div className="mt-8">
+            <NormalizationPanel
+              inquiryId={params.id}
+              parsedData={parsedData || undefined}
+              loading={parsing}
+              onRegenerate={inquiry.status !== 'new' ? handleParse : undefined}
+            />
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="mt-8 border-b border-gray-200">
