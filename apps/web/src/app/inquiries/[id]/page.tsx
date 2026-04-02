@@ -24,14 +24,12 @@ export default function InquiryDetailPage({ params }: PageProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'search'>('overview');
 
   useEffect(() => {
-    // Fetch inquiry data
     const fetchInquiry = async () => {
       try {
         const res = await fetch(`/api/inquiries/${params.id}`);
         const data = await res.json();
         setInquiry(data);
 
-        // Fetch parsed data if available
         if (data.status !== 'new') {
           try {
             const parsedRes = await fetch(`/api/inquiries/${params.id}/parsed-data`);
@@ -44,14 +42,12 @@ export default function InquiryDetailPage({ params }: PageProps) {
           }
         }
 
-        // Fetch candidates if available
         if (data.status !== 'new') {
           const candidateRes = await fetch(`/api/candidates?candidateRunId=${data.id}`);
           const candidateData = await candidateRes.json();
           setCandidates(candidateData.items || []);
         }
 
-        // Fetch search results if available
         if (data.status === 'searched' || data.status === 'reviewed') {
           const resultsRes = await fetch(`/api/search-results?searchJobId=${data.id}`);
           const resultsData = await resultsRes.json();
@@ -83,7 +79,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
       }
     } catch (error) {
       console.error('Failed to parse inquiry:', error);
-      alert('Failed to parse inquiry. Check console for details.');
+      alert('정규화 처리 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
     } finally {
       setParsing(false);
     }
@@ -112,11 +108,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
       <>
         <Header
           firmName={session?.user?.firmId || 'IP Review Desk'}
-          userName={session?.user?.name || 'User'}
-          userRole={session?.user?.role || 'Viewer'}
+          userName={session?.user?.name || '사용자'}
+          userRole={session?.user?.role || 'operator'}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">Loading...</div>
+          <div className="text-center">불러오는 중...</div>
         </main>
       </>
     );
@@ -127,11 +123,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
       <>
         <Header
           firmName={session?.user?.firmId || 'IP Review Desk'}
-          userName={session?.user?.name || 'User'}
-          userRole={session?.user?.role || 'Viewer'}
+          userName={session?.user?.name || '사용자'}
+          userRole={session?.user?.role || 'operator'}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">Inquiry not found</div>
+          <div className="text-center">의뢰를 찾을 수 없습니다</div>
         </main>
       </>
     );
@@ -141,14 +137,14 @@ export default function InquiryDetailPage({ params }: PageProps) {
     <>
       <Header
         firmName={session?.user?.firmId || 'IP Review Desk'}
-        userName={session?.user?.name || 'User'}
-        userRole={session?.user?.role || 'Viewer'}
+        userName={session?.user?.name || '사용자'}
+        userRole={session?.user?.role || 'operator'}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center gap-4">
           <Link href="/inquiries" className="text-blue-600 hover:text-blue-700">
-            ← Back to Inquiries
+            ← 접수함으로
           </Link>
           <span className="text-gray-600">/</span>
           <span className="text-gray-900">{inquiry.title}</span>
@@ -160,7 +156,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
           processing={inquiry.status === 'new' ? parsing : processing}
         />
 
-        {/* Normalization Panel */}
+        {/* 정규화 결과 패널 */}
         {(inquiry.status !== 'new' || parsedData) && (
           <div className="mt-8">
             <NormalizationPanel
@@ -172,13 +168,13 @@ export default function InquiryDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* Tabs */}
+        {/* 탭 */}
         <div className="mt-8 border-b border-gray-200">
           <div className="flex gap-8">
             {[
-              { id: 'overview' as const, label: 'Overview' },
-              { id: 'candidates' as const, label: 'Candidates', count: candidates.length },
-              { id: 'search' as const, label: 'Search Results', count: results.length },
+              { id: 'overview' as const, label: '개요' },
+              { id: 'candidates' as const, label: '지정상품 후보', count: candidates.length },
+              { id: 'search' as const, label: '유사상표 검색 결과', count: results.length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -200,11 +196,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Tab Content */}
+        {/* 탭 내용 */}
         <div className="mt-8">
           {activeTab === 'overview' && (
             <div className="text-center text-gray-500">
-              Select candidates or search results tabs to view details
+              지정상품 후보 또는 유사상표 검색 결과 탭을 선택하세요
             </div>
           )}
           {activeTab === 'candidates' && (

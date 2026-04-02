@@ -9,7 +9,15 @@ export interface HeaderProps {
   userRole?: string;
 }
 
+const roleLabels: Record<string, string> = {
+  admin: '관리자',
+  reviewer: '검토자',
+  operator: '담당자',
+};
+
 export function Header({ firmName, userName, userRole }: HeaderProps) {
+  const roleLabel = userRole ? (roleLabels[userRole] ?? userRole) : undefined;
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -23,19 +31,19 @@ export function Header({ firmName, userName, userRole }: HeaderProps) {
                 href="/inquiries"
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
-                Inquiries
+                접수함
               </Link>
               <Link
                 href="/review"
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
-                Reviews
+                검토 리포트
               </Link>
               <Link
                 href="/analytics"
                 className="text-gray-600 hover:text-gray-900 font-medium text-sm"
               >
-                Analytics
+                통계
               </Link>
             </nav>
           </div>
@@ -45,7 +53,7 @@ export function Header({ firmName, userName, userRole }: HeaderProps) {
               <div className="text-sm font-medium text-gray-900">{firmName}</div>
               {userName && (
                 <div className="text-xs text-gray-500">
-                  {userName} {userRole && `(${userRole})`}
+                  {userName} {roleLabel && `(${roleLabel})`}
                 </div>
               )}
             </div>

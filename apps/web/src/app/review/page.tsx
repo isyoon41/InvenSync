@@ -6,6 +6,13 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import type { ReviewReport } from '@ip-review/domain';
 
+const riskLabelKo: Record<string, string> = {
+  high: '높음',
+  medium: '중간',
+  low: '낮음',
+  unknown: '미확인',
+};
+
 export default function ReviewPage() {
   const { data: session } = useSession();
   const [reports, setReports] = useState<ReviewReport[]>([]);
@@ -23,14 +30,12 @@ export default function ReviewPage() {
       try {
         const firmId = session.user.firmId;
 
-        // Fetch pending approval reports
         const pendingRes = await fetch(
           `/api/review-reports?firmId=${encodeURIComponent(firmId)}&pendingApproval=true`
         );
         const pendingData = await pendingRes.json();
         setPendingReports(pendingData.items || []);
 
-        // Fetch approved reports
         const approvedRes = await fetch(`/api/review-reports?firmId=${encodeURIComponent(firmId)}&since=2024-01-01`);
         const approvedData = await approvedRes.json();
         setReports(approvedData.items || []);
@@ -50,39 +55,39 @@ export default function ReviewPage() {
     <>
       <Header
         firmName={session?.user?.firmId || 'IP Review Desk'}
-        userName={session?.user?.name || 'User'}
-        userRole={session?.user?.role || 'Reviewer'}
+        userName={session?.user?.name || '사용자'}
+        userRole={session?.user?.role || 'reviewer'}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Review Reports</h1>
+          <h1 className="text-3xl font-bold text-gray-900">검토 리포트</h1>
           <p className="mt-2 text-gray-600">
-            Manage trademark review reports and client approvals
+            상표 검토 리포트 및 고객 회신 승인을 관리합니다
           </p>
         </div>
 
-        {/* Stats */}
+        {/* 현황 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-red-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-red-900">{pendingReports.length}</div>
-            <div className="text-sm text-red-700">Pending Approval</div>
+            <div className="text-sm text-red-700">승인 대기</div>
           </div>
           <div className="bg-green-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-green-900">{reports.length}</div>
-            <div className="text-sm text-green-700">Approved</div>
+            <div className="text-sm text-green-700">승인 완료</div>
           </div>
           <div className="bg-blue-100 rounded-lg p-4">
             <div className="text-2xl font-bold text-blue-900">
               {pendingReports.length + reports.length}
             </div>
-            <div className="text-sm text-blue-700">Total Reports</div>
+            <div className="text-sm text-blue-700">전체 리포트</div>
           </div>
         </div>
 
-        {/* Filter */}
+        {/* 필터 */}
         <div className="flex gap-4 mb-6">
-          {['pending' as const, 'approved' as const].map((f) => (
+          {(['pending', 'approved'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -92,18 +97,18 @@ export default function ReviewPage() {
                   : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
               }`}
             >
-              {f === 'pending' ? 'Pending Approval' : 'Approved'}
+              {f === 'pending' ? '승인 대기' : '승인 완료'}
             </button>
           ))}
         </div>
 
-        {/* Reports List */}
+        {/* 리포트 목록 */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {loading ? (
-            <div className="px-6 py-12 text-center text-gray-500">Loading...</div>
+            <div className="px-6 py-12 text-center text-gray-500">불러오는 중...</div>
           ) : displayReports.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-500">
-              No {filter} reports found
+              {filter === 'pending' ? '승인 대기 중인' : '승인 완료된'} 리포트가 없습니다
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -111,28 +116,28 @@ export default function ReviewPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Mark Name
+                      상표명
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Risk Level
+                      위험도
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Status
+                      상태
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Date
+                      등록일
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                      Action
+                      작업
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {displayReports.map((report) => {
                     const riskLevel = report.riskNote
-                      ? report.riskNote.includes('high')
+                      ? report.riskNote.includes('high') || report.riskNote.includes('높음')
                         ? 'high'
-                        : report.riskNote.includes('medium')
+                        : report.riskNote.includes('medium') || report.riskNote.includes('중간')
                           ? 'medium'
                           : 'low'
                       : 'unknown';
@@ -148,7 +153,7 @@ export default function ReviewPage() {
                       <tr key={report.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {(report as any).inquiry?.proposedMarkName || 'Unknown Mark'}
+                            {(report as any).inquiry?.proposedMarkName || '상표명 미설정'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -157,7 +162,7 @@ export default function ReviewPage() {
                               riskColors[riskLevel]
                             }`}
                           >
-                            {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
+                            {riskLabelKo[riskLevel]}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -168,12 +173,12 @@ export default function ReviewPage() {
                                 : 'bg-yellow-100 text-yellow-800'
                             }`}
                           >
-                            {report.approvedAt ? 'Approved' : 'Pending'}
+                            {report.approvedAt ? '승인 완료' : '승인 대기'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {new Date(report.createdAt).toLocaleDateString()}
+                            {new Date(report.createdAt).toLocaleDateString('ko-KR')}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -181,7 +186,7 @@ export default function ReviewPage() {
                             href={`/review/${report.id}`}
                             className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                           >
-                            View
+                            보기
                           </Link>
                         </td>
                       </tr>

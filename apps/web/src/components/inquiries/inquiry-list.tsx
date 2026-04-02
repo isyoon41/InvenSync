@@ -28,26 +28,26 @@ export function InquiryList({
   };
 
   const statusLabels: Record<string, string> = {
-    new: 'New',
-    parsed: 'Parsed',
-    candidate_ready: 'Candidates Ready',
-    searched: 'Searched',
-    reviewed: 'Reviewed',
-    approved: 'Approved',
-    exported: 'Exported',
+    new: '신규',
+    parsed: '정규화 완료',
+    candidate_ready: '지정상품 완료',
+    searched: '검색 완료',
+    reviewed: '검토 완료',
+    approved: '승인됨',
+    exported: '내보내기 완료',
   };
 
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-900">Inquiries</h2>
+        <h2 className="text-lg font-semibold text-gray-900">의뢰 목록</h2>
         {onRefresh && (
           <button
             onClick={onRefresh}
             disabled={loading}
             className="text-sm text-blue-600 hover:text-blue-700 disabled:text-gray-400"
           >
-            {loading ? 'Loading...' : 'Refresh'}
+            {loading ? '불러오는 중...' : '새로 고침'}
           </button>
         )}
       </div>
@@ -57,19 +57,19 @@ export function InquiryList({
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                Title
+                제목
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                Mark Name
+                상표명
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                Status
+                진행 상태
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                Date
+                등록일
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                Action
+                작업
               </th>
             </tr>
           </thead>
@@ -100,7 +100,7 @@ export function InquiryList({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-500">
-                    {new Date(inquiry.createdAt).toLocaleDateString()}
+                    {new Date(inquiry.createdAt).toLocaleDateString('ko-KR')}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -108,7 +108,7 @@ export function InquiryList({
                     href={`/inquiries/${inquiry.id}`}
                     className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                   >
-                    View
+                    보기
                   </Link>
                 </td>
               </tr>
@@ -119,7 +119,7 @@ export function InquiryList({
 
       {inquiries.length === 0 && !loading && (
         <div className="px-6 py-12 text-center">
-          <p className="text-gray-500">No inquiries found</p>
+          <p className="text-gray-500">등록된 의뢰가 없습니다</p>
         </div>
       )}
     </div>

@@ -41,13 +41,13 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
     const newErrors: FormErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = '검토 제목을 입력하세요';
     }
     if (!formData.clientName.trim()) {
-      newErrors.clientName = 'Client name is required';
+      newErrors.clientName = '고객명을 입력하세요';
     }
     if (!formData.content.trim()) {
-      newErrors.content = 'Content is required';
+      newErrors.content = '상품/서비스 설명을 입력하세요';
     }
 
     setErrors(newErrors);
@@ -62,7 +62,6 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
       ...prev,
       [name]: value,
     }));
-    // Clear error for this field
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({
         ...prev,
@@ -127,14 +126,14 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create inquiry');
+        throw new Error(error.message || '의뢰 등록에 실패했습니다');
       }
 
       const data = await response.json();
       router.push(`/inquiries/${data.id}`);
     } catch (error) {
       setErrors({
-        title: error instanceof Error ? error.message : 'Failed to submit form',
+        title: error instanceof Error ? error.message : '폼 제출 중 오류가 발생했습니다',
       });
       setLoading(false);
     }
@@ -142,10 +141,10 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Title Field */}
+      {/* 검토 제목 */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Inquiry Title *
+          검토 제목 *
         </label>
         <input
           type="text"
@@ -153,7 +152,7 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
           name="title"
           value={formData.title}
           onChange={handleInputChange}
-          placeholder="e.g., New Trademark Review Request"
+          placeholder="예: 스마트폰 액세서리 상표 검토"
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
         {errors.title && (
@@ -161,11 +160,11 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
         )}
       </div>
 
-      {/* Client Information */}
+      {/* 고객 정보 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">
-            Client Name *
+            고객명 *
           </label>
           <input
             type="text"
@@ -173,7 +172,7 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
             name="clientName"
             value={formData.clientName}
             onChange={handleInputChange}
-            placeholder="e.g., Kim Ji-won"
+            placeholder="예: 김지원"
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
           {errors.clientName && (
@@ -186,7 +185,7 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
             htmlFor="companyName"
             className="block text-sm font-medium text-gray-700"
           >
-            Company Name
+            회사명
           </label>
           <input
             type="text"
@@ -194,16 +193,16 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
             name="companyName"
             value={formData.companyName}
             onChange={handleInputChange}
-            placeholder="e.g., ABC Corporation"
+            placeholder="예: (주)ABC코퍼레이션"
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
 
-      {/* Email */}
+      {/* 고객 이메일 */}
       <div>
         <label htmlFor="clientEmail" className="block text-sm font-medium text-gray-700">
-          Client Email
+          고객 이메일
         </label>
         <input
           type="email"
@@ -211,22 +210,22 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
           name="clientEmail"
           value={formData.clientEmail}
           onChange={handleInputChange}
-          placeholder="e.g., client@example.com"
+          placeholder="예: client@example.com"
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
-      {/* Content */}
+      {/* 상품/서비스 설명 */}
       <div>
         <label htmlFor="content" className="block text-sm font-medium text-gray-700">
-          Inquiry Details *
+          상품/서비스 설명 *
         </label>
         <textarea
           id="content"
           name="content"
           value={formData.content}
           onChange={handleInputChange}
-          placeholder="Describe the trademark, proposed goods, and any additional context..."
+          placeholder="상표명, 지정상품 또는 서비스, 추가 맥락 정보를 입력하세요..."
           rows={6}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
@@ -235,10 +234,10 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
         )}
       </div>
 
-      {/* Tags */}
+      {/* 태그 */}
       <div>
         <label htmlFor="tags" className="block text-sm font-medium text-gray-700">
-          Tags (comma-separated)
+          태그 (쉼표로 구분)
         </label>
         <input
           type="text"
@@ -246,15 +245,15 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
           name="tags"
           value={formData.tags}
           onChange={handleInputChange}
-          placeholder="e.g., urgent, fashion, korea"
+          placeholder="예: 긴급, 패션, 식품"
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
 
-      {/* File Upload */}
+      {/* 첨부파일 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Attachments (Optional)
+          첨부파일 (선택)
         </label>
         <div
           onDragEnter={handleDrag}
@@ -279,9 +278,9 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
             className="cursor-pointer block"
           >
             <div className="text-gray-600">
-              <p className="font-medium">Drop files here or click to upload</p>
+              <p className="font-medium">파일을 드래그하거나 클릭하여 업로드</p>
               <p className="text-sm text-gray-500 mt-1">
-                PDF, Word, Excel documents (up to 10 files)
+                PDF, Word, Excel 문서 (최대 10개)
               </p>
             </div>
           </label>
@@ -289,7 +288,7 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
           {files.length > 0 && (
             <div className="mt-4 text-left">
               <p className="text-sm font-medium text-gray-700 mb-2">
-                Selected files:
+                선택된 파일:
               </p>
               <ul className="space-y-1">
                 {files.map((file, idx) => (
@@ -303,21 +302,21 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
         </div>
       </div>
 
-      {/* Submit Button */}
+      {/* 제출 버튼 */}
       <div className="flex gap-4">
         <button
           type="submit"
           disabled={loading}
           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-medium transition-colors"
         >
-          {loading ? 'Submitting...' : 'Submit Inquiry'}
+          {loading ? '등록 중...' : '✓ 접수'}
         </button>
         <button
           type="button"
           onClick={() => router.back()}
           className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
         >
-          Cancel
+          취소
         </button>
       </div>
     </form>

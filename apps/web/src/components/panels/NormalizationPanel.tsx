@@ -24,9 +24,9 @@ export function NormalizationPanel({
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <div className="text-center py-8">
-          <p className="text-gray-500">No normalization data available</p>
+          <p className="text-gray-500">정규화 데이터가 없습니다</p>
           <p className="text-sm text-gray-400 mt-2">
-            Click "Start Processing" to analyze this inquiry
+            &ldquo;정규화 시작&rdquo; 버튼을 눌러 의뢰를 분석하세요
           </p>
         </div>
       </div>
@@ -42,19 +42,20 @@ export function NormalizationPanel({
 
   return (
     <div className="bg-white rounded-lg shadow">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+      {/* 헤더 */}
+      <div
+        className="px-6 py-4 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-50"
         onClick={() => setExpanded(!expanded)}
       >
         <h2 className="text-lg font-semibold text-gray-900">
-          Normalization Results
+          정규화 결과
         </h2>
         <div className="flex items-center gap-4">
           {parsedData.confidence && (
             <span
               className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${confidenceColor}`}
             >
-              Confidence: {(parsedData.confidence * 100).toFixed(0)}%
+              신뢰도: {(parsedData.confidence * 100).toFixed(0)}%
             </span>
           )}
           <button
@@ -69,38 +70,38 @@ export function NormalizationPanel({
         </div>
       </div>
 
-      {/* Content */}
+      {/* 내용 */}
       {expanded && (
         <div className="px-6 py-4 space-y-6">
-          {/* Mark Name */}
+          {/* 정규화 상표명 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Mark Name (Normalized)
+              정규화 상표명
             </label>
             <div className="bg-gray-50 border border-gray-200 rounded p-3">
               <p className="text-lg font-semibold text-gray-900">
-                {parsedData.markNameNormalized || 'Not available'}
+                {parsedData.markNameNormalized || '미확인'}
               </p>
             </div>
           </div>
 
-          {/* Goods Description */}
+          {/* 정규화 지정상품 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Goods Description (Normalized)
+              정규화 지정상품
             </label>
             <div className="bg-gray-50 border border-gray-200 rounded p-3">
               <p className="text-gray-700 whitespace-pre-wrap">
-                {parsedData.goodsDescriptionNormalized || 'Not available'}
+                {parsedData.goodsDescriptionNormalized || '미확인'}
               </p>
             </div>
           </div>
 
-          {/* Industry */}
+          {/* 추정 업종 */}
           {parsedData.industry && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Detected Industry
+                추정 업종
               </label>
               <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                 {parsedData.industry}
@@ -108,11 +109,11 @@ export function NormalizationPanel({
             </div>
           )}
 
-          {/* Missing Fields */}
+          {/* 누락 정보 */}
           {parsedData.missingFields && parsedData.missingFields.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Missing Fields
+                누락 정보
               </label>
               <div className="space-y-2">
                 {parsedData.missingFields.map((field, idx) => (
@@ -127,11 +128,11 @@ export function NormalizationPanel({
             </div>
           )}
 
-          {/* Reasoning */}
+          {/* 분석 메모 */}
           {parsedData.reasoning && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Analysis Notes
+                분석 메모
               </label>
               <div className="bg-gray-50 border border-gray-200 rounded p-3">
                 <p className="text-sm text-gray-700">{parsedData.reasoning}</p>
@@ -139,7 +140,7 @@ export function NormalizationPanel({
             </div>
           )}
 
-          {/* Actions */}
+          {/* 액션 버튼 */}
           <div className="flex gap-3 pt-4 border-t border-gray-200">
             {onRegenerate && (
               <button
@@ -147,7 +148,7 @@ export function NormalizationPanel({
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded border border-blue-200 disabled:text-gray-400 disabled:border-gray-200"
               >
-                {loading ? 'Regenerating...' : 'Regenerate'}
+                {loading ? '분석 중...' : '🔄 다시 분석'}
               </button>
             )}
             {onProceedToCandidates && (
@@ -155,7 +156,7 @@ export function NormalizationPanel({
                 onClick={onProceedToCandidates}
                 className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
               >
-                Proceed to Candidates
+                지정상품 설계로 →
               </button>
             )}
           </div>

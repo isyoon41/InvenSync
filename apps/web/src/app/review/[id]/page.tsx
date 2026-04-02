@@ -72,11 +72,11 @@ export default function ReviewDetailPage({ params }: PageProps) {
       <>
         <Header
           firmName={session?.user?.firmId || 'IP Review Desk'}
-          userName={session?.user?.name || 'User'}
-          userRole={session?.user?.role || 'Viewer'}
+          userName={session?.user?.name || '사용자'}
+          userRole={session?.user?.role || 'reviewer'}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">Loading...</div>
+          <div className="text-center">불러오는 중...</div>
         </main>
       </>
     );
@@ -87,11 +87,11 @@ export default function ReviewDetailPage({ params }: PageProps) {
       <>
         <Header
           firmName={session?.user?.firmId || 'IP Review Desk'}
-          userName={session?.user?.name || 'User'}
-          userRole={session?.user?.role || 'Viewer'}
+          userName={session?.user?.name || '사용자'}
+          userRole={session?.user?.role || 'reviewer'}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">Report not found</div>
+          <div className="text-center">리포트를 찾을 수 없습니다</div>
         </main>
       </>
     );
@@ -101,17 +101,17 @@ export default function ReviewDetailPage({ params }: PageProps) {
     <>
       <Header
         firmName={session?.user?.firmId || 'IP Review Desk'}
-        userName={session?.user?.name || 'User'}
-        userRole={session?.user?.role || 'Viewer'}
+        userName={session?.user?.name || '사용자'}
+        userRole={session?.user?.role || 'reviewer'}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center gap-4">
           <Link href="/review" className="text-blue-600 hover:text-blue-700">
-            ← Back to Reviews
+            ← 검토 리포트 목록
           </Link>
           <span className="text-gray-600">/</span>
-          <span className="text-gray-900">Review Report</span>
+          <span className="text-gray-900">검토 리포트</span>
         </div>
 
         <ReviewReport
@@ -121,16 +121,16 @@ export default function ReviewDetailPage({ params }: PageProps) {
           onApprove={handleApprove}
         />
 
-        {/* Evidence List */}
+        {/* 근거 자료 목록 */}
         {report.evidences && report.evidences.length > 0 && (
           <div className="mt-8 bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Evidence</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">근거 자료</h2>
             <div className="space-y-4">
               {report.evidences.map((evidence, index) => (
                 <div key={evidence.id} className="border border-gray-200 rounded p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-medium text-gray-900">Evidence {index + 1}</h3>
+                      <h3 className="font-medium text-gray-900">근거 {index + 1}</h3>
                       {evidence.note && (
                         <p className="text-sm text-gray-600 mt-2">{evidence.note}</p>
                       )}

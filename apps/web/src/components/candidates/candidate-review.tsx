@@ -9,6 +9,14 @@ export interface CandidateReviewProps {
   onUpdateRationale?: (id: string, rationale: string) => void;
 }
 
+const sourceTypeLabels: Record<string, string> = {
+  official_notice_name: '고시명칭',
+  accepted_similar_name: '수용 유사명칭',
+  ai_generated: 'AI 생성',
+  manual: '수동 입력',
+  competitor_reference: '경쟁사 참조',
+};
+
 export function CandidateReview({
   candidates,
   onToggleSelection,
@@ -17,9 +25,9 @@ export function CandidateReview({
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Candidates</h2>
+        <h2 className="text-lg font-semibold text-gray-900">🔍 지정상품 후보</h2>
         <p className="text-sm text-gray-600 mt-1">
-          {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} generated
+          {candidates.length}개 후보 생성됨
         </p>
       </div>
 
@@ -46,23 +54,23 @@ export function CandidateReview({
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs text-gray-600 uppercase tracking-wider">
-                      Class No
+                      류 (Class)
                     </label>
                     <div className="text-sm font-medium text-gray-900">
-                      {candidate.classNo}
+                      {candidate.classNo}류
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-gray-600 uppercase tracking-wider">
-                      Source
+                      출처
                     </label>
                     <div className="text-sm font-medium text-gray-900">
-                      {candidate.sourceType}
+                      {sourceTypeLabels[candidate.sourceType] || candidate.sourceType}
                     </div>
                   </div>
                   <div>
                     <label className="text-xs text-gray-600 uppercase tracking-wider">
-                      Confidence
+                      신뢰도
                     </label>
                     <div className="flex items-center gap-2">
                       <div className="text-sm font-medium text-gray-900">
@@ -79,13 +87,13 @@ export function CandidateReview({
                 </div>
 
                 <div className="mt-4">
-                  <label className="text-sm text-gray-600">Rationale</label>
+                  <label className="text-sm text-gray-600">근거</label>
                   <textarea
                     value={candidate.rationale}
                     onChange={(e) => onUpdateRationale?.(candidate.id, e.target.value)}
                     className="mt-1 w-full text-sm border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={2}
-                    placeholder="Edit rationale for this candidate..."
+                    placeholder="이 후보에 대한 근거를 입력하세요..."
                   />
                 </div>
               </div>
@@ -96,7 +104,7 @@ export function CandidateReview({
 
       {candidates.length === 0 && (
         <div className="px-6 py-12 text-center">
-          <p className="text-gray-500">No candidates yet</p>
+          <p className="text-gray-500">지정상품 후보가 없습니다</p>
         </div>
       )}
     </div>

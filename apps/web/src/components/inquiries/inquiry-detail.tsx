@@ -10,6 +10,16 @@ export interface InquiryDetailProps {
   processing?: boolean;
 }
 
+const statusLabels: Record<string, string> = {
+  new: '신규',
+  parsed: '정규화 완료',
+  candidate_ready: '지정상품 완료',
+  searched: '검색 완료',
+  reviewed: '검토 완료',
+  approved: '승인됨',
+  exported: '내보내기 완료',
+};
+
 export function InquiryDetail({
   inquiry,
   onStatusChange,
@@ -18,12 +28,12 @@ export function InquiryDetail({
 }: InquiryDetailProps) {
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* 헤더 */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{inquiry.title}</h1>
-            <p className="mt-2 text-gray-600">{inquiry.subject || 'No subject'}</p>
+            <p className="mt-2 text-gray-600">{inquiry.subject || '제목 없음'}</p>
           </div>
           {onProcess && (
             <button
@@ -31,38 +41,40 @@ export function InquiryDetail({
               disabled={processing || inquiry.status !== 'new'}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {processing ? 'Processing...' : 'Start Processing'}
+              {processing ? '처리 중...' : '정규화 시작'}
             </button>
           )}
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm text-gray-600">Proposed Mark Name</label>
+            <label className="text-sm text-gray-600">제안 상표명</label>
             <div className="text-lg font-semibold text-gray-900">
-              {inquiry.proposedMarkName || 'Not set'}
+              {inquiry.proposedMarkName || '미설정'}
             </div>
           </div>
           <div>
-            <label className="text-sm text-gray-600">Status</label>
-            <div className="text-lg font-semibold text-gray-900">{inquiry.status}</div>
+            <label className="text-sm text-gray-600">진행 상태</label>
+            <div className="text-lg font-semibold text-gray-900">
+              {statusLabels[inquiry.status] || inquiry.status}
+            </div>
           </div>
           <div>
-            <label className="text-sm text-gray-600">From</label>
-            <div className="text-gray-700">{inquiry.senderEmail || 'Unknown'}</div>
+            <label className="text-sm text-gray-600">발신자</label>
+            <div className="text-gray-700">{inquiry.senderEmail || '미확인'}</div>
           </div>
           <div>
-            <label className="text-sm text-gray-600">Received</label>
+            <label className="text-sm text-gray-600">접수일시</label>
             <div className="text-gray-700">
-              {new Date(inquiry.createdAt).toLocaleString()}
+              {new Date(inquiry.createdAt).toLocaleString('ko-KR')}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Email Content */}
+      {/* 의뢰 내용 */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Email Content</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">의뢰 내용</h2>
         <div className="bg-gray-50 p-4 rounded border border-gray-200">
           <pre className="text-sm text-gray-700 whitespace-pre-wrap break-words">
             {inquiry.rawText}
@@ -70,10 +82,10 @@ export function InquiryDetail({
         </div>
       </div>
 
-      {/* HTML Preview */}
+      {/* HTML 미리보기 */}
       {inquiry.rawHtml && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">HTML Preview</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">HTML 미리보기</h2>
           <div
             className="bg-white border border-gray-200 rounded p-4"
             dangerouslySetInnerHTML={{ __html: inquiry.rawHtml }}
@@ -81,10 +93,10 @@ export function InquiryDetail({
         </div>
       )}
 
-      {/* Metadata */}
+      {/* 메타데이터 */}
       {inquiry.metadata && Object.keys(inquiry.metadata).length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Metadata</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">메타데이터</h2>
           <pre className="text-sm text-gray-700 bg-gray-50 p-4 rounded overflow-auto">
             {JSON.stringify(inquiry.metadata, null, 2)}
           </pre>

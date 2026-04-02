@@ -11,11 +11,11 @@ export interface SearchResultsProps {
 export function SearchResults({ results, onToggleShortlist }: SearchResultsProps) {
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-gray-900">Search Results</h2>
+      <h2 className="text-lg font-semibold text-gray-900">🔎 유사상표 검색 결과</h2>
 
       {results.length === 0 ? (
         <div className="bg-white rounded-lg p-6 text-center">
-          <p className="text-gray-500">No search results</p>
+          <p className="text-gray-500">검색 결과가 없습니다</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -25,14 +25,14 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-gray-900">{result.markName}</h3>
                   {result.applicantName && (
-                    <p className="text-sm text-gray-600">{result.applicantName}</p>
+                    <p className="text-sm text-gray-600">출원인: {result.applicantName}</p>
                   )}
 
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     {result.applicationNumber && (
                       <div>
                         <label className="text-xs text-gray-600 uppercase tracking-wider">
-                          Application No
+                          출원번호
                         </label>
                         <div className="text-sm font-medium text-gray-900">
                           {result.applicationNumber}
@@ -42,7 +42,7 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                     {result.registerNumber && (
                       <div>
                         <label className="text-xs text-gray-600 uppercase tracking-wider">
-                          Register No
+                          등록번호
                         </label>
                         <div className="text-sm font-medium text-gray-900">
                           {result.registerNumber}
@@ -52,17 +52,17 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                     {result.classNo && (
                       <div>
                         <label className="text-xs text-gray-600 uppercase tracking-wider">
-                          Class
+                          류
                         </label>
                         <div className="text-sm font-medium text-gray-900">
-                          {result.classNo}
+                          {result.classNo}류
                         </div>
                       </div>
                     )}
                     {result.statusLabel && (
                       <div>
                         <label className="text-xs text-gray-600 uppercase tracking-wider">
-                          Status
+                          상태
                         </label>
                         <div className="text-sm font-medium text-gray-900">
                           {result.statusLabel}
@@ -74,7 +74,7 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                   {result.relevanceScore && (
                     <div className="mt-4">
                       <label className="text-xs text-gray-600 uppercase tracking-wider">
-                        Relevance Score
+                        유사도
                       </label>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="text-sm font-medium text-gray-900">
@@ -93,7 +93,7 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                   {result.designatedGoodsSummary && (
                     <div className="mt-4">
                       <label className="text-xs text-gray-600 uppercase tracking-wider">
-                        Goods
+                        지정상품
                       </label>
                       <p className="text-sm text-gray-700 mt-1">{result.designatedGoodsSummary}</p>
                     </div>
@@ -117,7 +117,7 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                         : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                     }`}
                   >
-                    {result.isShortlisted ? '★ Shortlisted' : '☆ Shortlist'}
+                    {result.isShortlisted ? '★ 북마크됨' : '☆ 북마크'}
                   </button>
                 </div>
               </div>
