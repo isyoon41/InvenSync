@@ -18,9 +18,9 @@
         "name": "next"
       }
     ],
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["./src/*"],
       "@ip-review/db": ["../../packages/db/src"],
       "@ip-review/db/*": ["../../packages/db/src/*"],
       "@ip-review/domain": ["../../packages/domain/src"],

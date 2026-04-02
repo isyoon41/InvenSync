@@ -20,6 +20,7 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["apps/web/src/*"],
       "@ip-review/*": ["packages/*/src"],
       "@ip-review/db": ["packages/db/src"],
       "@ip-review/db/*": ["packages/db/src/*"],
