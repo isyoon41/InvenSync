@@ -635,6 +635,14 @@ async function main() {
     role: UserRole.admin,
   });
 
+  // Production admin account
+  await ensureUser({
+    firmId: firm.id,
+    name: "상표검토 관리자",
+    email: "trademark.inbox26@gmail.com",
+    role: UserRole.admin,
+  });
+
   await ensureUser({
     firmId: firm.id,
     name: "홍준 변리사",
