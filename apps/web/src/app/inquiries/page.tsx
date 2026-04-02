@@ -1,23 +1,46 @@
 import React from 'react';
 import { Header, InquiryList } from '@/components';
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-// This will be replaced with actual data fetching
 async function getInquiries(firmId: string) {
-  // TODO: Fetch from API
-  return [];
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/inquiries?firmId=${encodeURIComponent(firmId)}`, {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch inquiries: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.items || [];
+  } catch (error) {
+    console.error('Error fetching inquiries:', error);
+    return [];
+  }
 }
 
 export default async function InquiriesPage() {
-  const firmId = 'demo-firm'; // TODO: Get from session
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.firmId) {
+    redirect('/login');
+  }
+
+  const firmId = session.user.firmId;
   const inquiries = await getInquiries(firmId);
 
   return (
     <>
       <Header
-        firmName="IP Review Desk Demo Firm"
-        userName="윤인식"
-        userRole="Admin"
+        firmName={session.user.firmId || 'IP Review Desk'}
+        userName={session.user.name || 'User'}
+        userRole={session.user.role || 'Viewer'}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
