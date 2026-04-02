@@ -41,18 +41,27 @@ importers:
       '@prisma/client':
         specifier: ^5.9.1
         version: 5.22.0(prisma@5.22.0)
+      autoprefixer:
+        specifier: ^10.4.17
+        version: 10.4.27(postcss@8.5.8)
       next:
         specifier: ^14.1.0
         version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-auth:
         specifier: ^4.24.7
         version: 4.24.13(next@14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      postcss:
+        specifier: ^8.4.35
+        version: 8.5.8
       react:
         specifier: ^18.2.0
         version: 18.3.1
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      tailwindcss:
+        specifier: ^3.4.1
+        version: 3.4.19(tsx@4.21.0)
     devDependencies:
       '@types/node':
         specifier: ^20.10.0
@@ -63,15 +72,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.0
         version: 18.3.7(@types/react@18.3.28)
-      autoprefixer:
-        specifier: ^10.4.17
-        version: 10.4.27(postcss@8.5.8)
-      postcss:
-        specifier: ^8.4.35
-        version: 8.5.8
-      tailwindcss:
-        specifier: ^3.4.1
-        version: 3.4.19(tsx@4.21.0)
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
