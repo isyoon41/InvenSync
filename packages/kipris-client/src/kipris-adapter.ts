@@ -8,7 +8,7 @@ import type {
   TrademarkSearchRequest,
   TrademarkSearchResponse,
 } from '@ip-review/domain';
-import { parseKiprisXml } from './kipris-xml-parser.js';
+import { parseKiprisXml } from './kipris-xml-parser';
 
 const KIPRIS_BASE_URL = 'http://plus.kipris.or.kr/openapi/rest';
 

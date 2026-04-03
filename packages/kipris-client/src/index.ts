@@ -1,6 +1,6 @@
-export { KiprisAdapter } from './kipris-adapter.js';
-export { MockTrademarkAdapter } from './mock-adapter.js';
-export { createTrademarkSearchPort } from './factory.js';
-export type { TrademarkProviderMode } from './factory.js';
-export { parseKiprisXml } from './kipris-xml-parser.js';
-export type { KiprisTrademarkItem, KiprisSearchResponse } from './kipris-xml-parser.js';
+export { KiprisAdapter } from './kipris-adapter';
+export { MockTrademarkAdapter } from './mock-adapter';
+export { createTrademarkSearchPort } from './factory';
+export type { TrademarkProviderMode } from './factory';
+export { parseKiprisXml } from './kipris-xml-parser';
+export type { KiprisTrademarkItem, KiprisSearchResponse } from './kipris-xml-parser';

@@ -4,8 +4,8 @@
  */
 
 import type { ILLMPort } from '@ip-review/domain';
-import { GeminiLLMAdapter } from './gemini-adapter.js';
-import { MockLLMAdapter } from './mock-adapter.js';
+import { GeminiLLMAdapter } from './gemini-adapter';
+import { MockLLMAdapter } from './mock-adapter';
 
 export type LLMProviderMode = 'mock' | 'gemini';
 

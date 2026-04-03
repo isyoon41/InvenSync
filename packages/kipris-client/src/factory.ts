@@ -4,8 +4,8 @@
  */
 
 import type { ITrademarkSearchPort } from '@ip-review/domain';
-import { KiprisAdapter } from './kipris-adapter.js';
-import { MockTrademarkAdapter } from './mock-adapter.js';
+import { KiprisAdapter } from './kipris-adapter';
+import { MockTrademarkAdapter } from './mock-adapter';
 
 export type TrademarkProviderMode = 'mock' | 'kipris' | 'python-sidecar';
 
