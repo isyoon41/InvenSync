@@ -11,8 +11,13 @@ export default async function HomePage() {
       {/* 헤더 */}
       <header style={{ backgroundColor: '#16171d' }} className="border-b border-white/10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold text-white tracking-tight">
-            Inven<span style={{ color: '#ff7914' }}>Sync</span>
+          <Link href="/">
+            <img
+              src="http://invensync.kr/wp-content/uploads/2018/08/invensync_logo.png"
+              alt="InvenSync"
+              className="h-8 w-auto object-contain"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
           </Link>
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/inquiries" className="text-sm font-medium text-gray-400 hover:text-white tracking-widest uppercase transition-colors">
@@ -337,8 +342,13 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10">
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
             <div>
-              <div className="text-xl font-bold text-white mb-2">
-                Inven<span style={{ color: '#ff7914' }}>Sync</span>
+              <div className="mb-2">
+                <img
+                  src="http://invensync.kr/wp-content/uploads/2018/08/invensync_logo.png"
+                  alt="InvenSync"
+                  className="h-7 w-auto object-contain"
+                  style={{ filter: 'brightness(0) invert(1)' }}
+                />
               </div>
               <p className="text-sm" style={{ color: '#949494' }}>
                 변리사를 위한 상표 검토 자동화 플랫폼
@@ -353,7 +363,7 @@ export default async function HomePage() {
             </div>
           </div>
           <div className="mt-8 pt-6 border-t border-white/10 text-xs" style={{ color: '#949494' }}>
-            © 2024 특허법인 인벤싱크. All rights reserved.
+            © 특허법인 인벤싱크. All rights reserved.
           </div>
         </div>
       </footer>
