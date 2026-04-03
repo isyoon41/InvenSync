@@ -47,15 +47,22 @@ export default function InquiryDetailPage({ params }: PageProps) {
         }
 
         if (data.status !== 'new') {
-          const candidateRes = await fetch(`/api/candidates?candidateRunId=${data.id}`);
+          // inquiryId로 최신 candidateRun 후보 조회
+          const candidateRes = await fetch(`/api/candidates?inquiryId=${data.id}`);
           const candidateData = await candidateRes.json();
           setCandidates(candidateData.items || []);
         }
 
         if (data.status === 'searched' || data.status === 'reviewed') {
-          const resultsRes = await fetch(`/api/search-results?searchJobId=${data.id}`);
-          const resultsData = await resultsRes.json();
-          setResults(resultsData.items || []);
+          // 최신 완료된 search job 조회 후 결과 가져오기
+          const jobsRes = await fetch(`/api/search-jobs?inquiryId=${data.id}`);
+          const jobsData = await jobsRes.json();
+          const doneJob = (jobsData.items || []).find((j: any) => j.state === 'done');
+          if (doneJob) {
+            const resultsRes = await fetch(`/api/search-results?searchJobId=${doneJob.id}`);
+            const resultsData = await resultsRes.json();
+            setResults(resultsData.items || []);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch inquiry:', error);
