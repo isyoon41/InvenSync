@@ -1,132 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-import { InquiryOrchestrator } from "@ip-review/workflows";
-import { InquiryProcessingError, ValidationError } from "@ip-review/domain";
-import { getRepositoryContainer } from "@ip-review/db";
+import { NextRequest, NextResponse } from 'next/server';
+import { CandidateGenerateWorkflow } from '@ip-review/workflows';
+import { getRepositoryContainer } from '@ip-review/db';
+import { createLLMPort } from '@ip-review/llm-engine';
 
-// Mock implementations for development
-class MockLLMPort {
-  async parseInquiry() {
-    return {
-      markNameNormalized: "MOCK_MARK",
-      goodsDescriptionNormalized: "Mock goods description",
-      industry: "technology",
-      confidence: 0.95,
-    };
-  }
-
-  async generateCandidates() {
-    return [
-      {
-        term: "Mock Term 1",
-        normalizedTerm: "MOCK_TERM_1",
-        classNo: 3,
-        sourceType: "ai_generated" as const,
-        confidence: 0.9,
-        rationale: "Generated from mark name",
-      },
-    ];
-  }
-
-  async generateReport() {
-    return {
-      summary: "Mock review summary",
-      riskNote: "Mock risk assessment",
-      recommendation: "Mock recommendation",
-      clientReplyDraft: "Mock client reply",
-    };
-  }
-
-  async isAvailable() {
-    return true;
-  }
-}
-
-class MockSearchPort {
-  async search() {
-    return [
-      {
-        markName: "SIMILAR_MARK",
-        applicationNumber: "40-2024-000001",
-        registerNumber: "01234567",
-        applicantName: "Mock Company",
-        classNo: 3,
-        statusLabel: "REGISTERED",
-        relevanceScore: 0.85,
-      },
-    ];
-  }
-
-  getSourceSystem() {
-    return "mock" as const;
-  }
-
-  async isAvailable() {
-    return true;
-  }
-
-  getCacheKey() {
-    return "mock-cache-key";
-  }
-}
-
+/**
+ * POST /api/inquiries/[id]/process
+ * 지정상품 후보 생성 — Gemini LLM으로 류·상품명 추천
+ * (상태: parsed → candidate_ready)
+ */
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json();
     const repositories = getRepositoryContainer();
 
-    // Verify inquiry exists
     const inquiry = await repositories.inquiries.findById(params.id);
     if (!inquiry) {
       return NextResponse.json(
-        { error: `Inquiry ${params.id} not found` },
+        { error: `의뢰 ${params.id}를 찾을 수 없습니다` },
         { status: 404 }
       );
     }
 
-    // Use mock providers for now
-    const llmPort = new MockLLMPort();
-    const searchPort = new MockSearchPort();
-
-    const orchestrator = new InquiryOrchestrator(repositories);
-    const result = await orchestrator.processInquiryFull(
-      params.id,
-      llmPort as any,
-      searchPort as any
-    );
-
-    if (result.error) {
+    if (inquiry.status !== 'parsed') {
       return NextResponse.json(
-        {
-          error: result.error.message,
-          status: result.status,
-          inquiry: result.inquiry,
-        },
+        { error: `지정상품 설계는 '정규화 완료' 상태에서만 가능합니다. 현재 상태: ${inquiry.status}` },
         { status: 422 }
       );
     }
 
-    return NextResponse.json(
-      {
-        status: result.status,
-        inquiry: result.inquiry,
-        result: result.result,
-      },
-      { status: 200 }
-    );
+    const llmPort = createLLMPort();
+
+    const workflow = new CandidateGenerateWorkflow(repositories);
+    const result = await workflow.execute({
+      inquiryId: params.id,
+      llmPort,
+    });
+
+    return NextResponse.json({
+      success: true,
+      candidateRunId: result.candidateRunId,
+      totalCount: result.totalCount,
+      message: `${result.totalCount}개의 지정상품 후보가 생성되었습니다`,
+    });
   } catch (error) {
-    console.error("POST /api/inquiries/[id]/process error:", error);
+    console.error('POST /api/inquiries/[id]/process error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { error: error instanceof Error ? error.message : '후보 생성 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }
 }
 
+/**
+ * GET /api/inquiries/[id]/process
+ * 의뢰 처리 현황 조회
+ */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -135,27 +67,24 @@ export async function GET(
     const inquiry = await repositories.inquiries.findById(params.id);
     if (!inquiry) {
       return NextResponse.json(
-        { error: `Inquiry ${params.id} not found` },
+        { error: `의뢰 ${params.id}를 찾을 수 없습니다` },
         { status: 404 }
       );
     }
 
-    // Get related data
-    const candidateRuns = await repositories.candidates.findByCandidateRun(params.id);
     const searchJobs = await repositories.searchJobs.findByInquiry(params.id);
     const reviewReports = await repositories.reviewReports.findByInquiry(params.id);
 
     return NextResponse.json({
       inquiry,
-      candidateRuns: candidateRuns.length,
       searchJobs: searchJobs.length,
       reviewReports: reviewReports.length,
-      latestReport: reviewReports[0] || null,
+      latestReport: reviewReports[0] ?? null,
     });
   } catch (error) {
-    console.error("GET /api/inquiries/[id]/process error:", error);
+    console.error('GET /api/inquiries/[id]/process error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { error: error instanceof Error ? error.message : '조회 중 오류가 발생했습니다' },
       { status: 500 }
     );
   }

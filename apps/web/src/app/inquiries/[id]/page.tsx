@@ -23,6 +23,8 @@ export default function InquiryDetailPage({ params }: PageProps) {
   const [processing, setProcessing] = useState(false);
   const [searching, setSearching] = useState(false);
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportMessage, setReportMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'search'>('overview');
 
   useEffect(() => {
@@ -95,13 +97,44 @@ export default function InquiryDetailPage({ params }: PageProps) {
         headers: { 'Content-Type': 'application/json' },
       });
       const result = await res.json();
-      if (result.inquiry) {
-        setInquiry(result.inquiry);
+      if (result.success) {
+        // 상태 갱신
+        const updatedRes = await fetch(`/api/inquiries/${params.id}`);
+        setInquiry(await updatedRes.json());
+        const candidateRes = await fetch(`/api/candidates?candidateRunId=${result.candidateRunId}`);
+        const candidateData = await candidateRes.json();
+        setCandidates(candidateData.items || []);
+        setActiveTab('candidates');
       }
     } catch (error) {
       console.error('Failed to process inquiry:', error);
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    setGeneratingReport(true);
+    setReportMessage(null);
+    try {
+      const res = await fetch('/api/review-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inquiryId: params.id }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setReportMessage('✓ 검토 리포트가 생성되었습니다');
+        const updatedRes = await fetch(`/api/inquiries/${params.id}`);
+        setInquiry(await updatedRes.json());
+      } else {
+        setReportMessage(`오류: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      setReportMessage('리포트 생성 중 오류가 발생했습니다');
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -189,9 +222,23 @@ export default function InquiryDetailPage({ params }: PageProps) {
           processing={inquiry.status === 'new' ? parsing : processing}
         />
 
-        {/* 유사상표 검색 버튼 */}
-        {(inquiry.status === 'candidate_ready' || inquiry.status === 'parsed') && (
-          <div className="mt-4 flex items-center gap-4">
+        {/* 액션 버튼 영역 */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {/* 지정상품 설계 버튼: parsed 상태일 때 */}
+          {inquiry.status === 'parsed' && (
+            <>
+              <button
+                onClick={handleProcess}
+                disabled={processing}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+              >
+                {processing ? '⚙️ 생성 중...' : '⚙️ 지정상품 설계 시작'}
+              </button>
+            </>
+          )}
+
+          {/* 유사상표 검색 버튼: candidate_ready 상태일 때 */}
+          {inquiry.status === 'candidate_ready' && (
             <button
               onClick={handleSearch}
               disabled={searching}
@@ -199,11 +246,25 @@ export default function InquiryDetailPage({ params }: PageProps) {
             >
               {searching ? '🔍 검색 중...' : '🔍 유사상표 검색 시작'}
             </button>
-            {searchMessage && (
-              <span className="text-sm text-gray-600">{searchMessage}</span>
-            )}
-          </div>
-        )}
+          )}
+          {searchMessage && (
+            <span className="text-sm text-gray-600">{searchMessage}</span>
+          )}
+
+          {/* 검토 리포트 생성 버튼: searched 상태일 때 */}
+          {inquiry.status === 'searched' && (
+            <button
+              onClick={handleGenerateReport}
+              disabled={generatingReport}
+              className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+            >
+              {generatingReport ? '📝 분석 중...' : '📝 검토 리포트 생성 (AI)'}
+            </button>
+          )}
+          {reportMessage && (
+            <span className="text-sm text-gray-600">{reportMessage}</span>
+          )}
+        </div>
 
         {/* 정규화 결과 패널 */}
         {(inquiry.status !== 'new' || parsedData) && (

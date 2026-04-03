@@ -19,6 +19,7 @@
     "@ip-review/domain": "workspace:*",
     "@ip-review/workflows": "workspace:*",
     "@ip-review/kipris-client": "workspace:*",
+    "@ip-review/llm-engine": "workspace:*",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",

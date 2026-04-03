@@ -38,6 +38,9 @@ importers:
       '@ip-review/kipris-client':
         specifier: workspace:*
         version: link:../../packages/kipris-client
+      '@ip-review/llm-engine':
+        specifier: workspace:*
+        version: link:../../packages/llm-engine
       '@ip-review/workflows':
         specifier: workspace:*
         version: link:../../packages/workflows
@@ -108,6 +111,22 @@ importers:
 
   packages/kipris-client:
     dependencies:
+      '@ip-review/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/llm-engine:
+    dependencies:
+      '@google/generative-ai':
+        specifier: ^0.21.0
+        version: 0.21.0
       '@ip-review/domain':
         specifier: workspace:*
         version: link:../domain
@@ -318,6 +337,10 @@ packages:
   '@eslint/js@8.57.1':
     resolution: {integrity: sha512-d9zaMRSTIKDLhctzH12MtXvJKSSUhaHcjV+2Z+GK+EEY7XKpP5yR4x+N3TAcHTcu963nIr+TMcCb4DBCYX1z6Q==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@google/generative-ai@0.21.0':
+    resolution: {integrity: sha512-7XhUbtnlkSEZK15kN3t+tzIMxsbKm/dSkKBFalj+20NvPKe1kBY7mR2P7vuijEn+f06z5+A8bVGKO0v39cr6Wg==}
+    engines: {node: '>=18.0.0'}
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -1482,6 +1505,8 @@ snapshots:
       - supports-color
 
   '@eslint/js@8.57.1': {}
+
+  '@google/generative-ai@0.21.0': {}
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
