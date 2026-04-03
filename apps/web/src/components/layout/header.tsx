@@ -149,13 +149,13 @@ const NAV_ITEMS: NavItem[] = [
           {
             label: '처리 통계',
             desc: '기간별 상표 검토 처리 현황을 확인합니다',
-            href: '/analytics',
+            href: '/analytics/stats',
             badge: null,
           },
           {
             label: 'KIPRIS 사용 현황',
             desc: 'API 사용량과 월별 조회 이력을 확인합니다',
-            href: '/analytics',
+            href: '/analytics/kipris',
             badge: null,
           },
         ],
