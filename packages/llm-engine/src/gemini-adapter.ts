@@ -18,7 +18,7 @@ import type {
   GeneratedReport,
 } from '@ip-review/domain';
 
-const MODEL_FLASH = 'gemini-2.0-flash';
+const MODEL_FLASH = 'gemini-1.5-flash';
 
 export class GeminiLLMAdapter implements ILLMPort {
   private client: GoogleGenerativeAI;
