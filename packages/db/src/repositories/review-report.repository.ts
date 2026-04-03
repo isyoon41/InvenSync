@@ -14,14 +14,14 @@ export class ReviewReportRepository implements IReviewReportRepository {
         clientReplyDraft: input.clientReplyDraft,
         internalNote: input.internalNote,
       },
-      include: { evidences: true },
+      include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
     }) as Promise<ReviewReport>;
   }
 
   async findById(id: string): Promise<ReviewReport | null> {
     return prisma.reviewReport.findUnique({
       where: { id },
-      include: { evidences: true },
+      include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
     }) as Promise<ReviewReport | null>;
   }
 
@@ -35,7 +35,7 @@ export class ReviewReportRepository implements IReviewReportRepository {
         ...(input.clientReplyDraft !== undefined && { clientReplyDraft: input.clientReplyDraft }),
         ...(input.internalNote !== undefined && { internalNote: input.internalNote }),
       },
-      include: { evidences: true },
+      include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
     }) as Promise<ReviewReport>;
   }
 
@@ -53,7 +53,7 @@ export class ReviewReportRepository implements IReviewReportRepository {
         take,
         where: options?.where,
         orderBy: options?.orderBy || { createdAt: "desc" },
-        include: { evidences: true },
+        include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
       }),
       prisma.reviewReport.count({ where: options?.where }),
     ]);
@@ -70,7 +70,7 @@ export class ReviewReportRepository implements IReviewReportRepository {
     return prisma.reviewReport.findMany({
       where: { inquiryId },
       orderBy: { createdAt: "desc" },
-      include: { evidences: true },
+      include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
     }) as Promise<ReviewReport[]>;
   }
 
@@ -78,7 +78,7 @@ export class ReviewReportRepository implements IReviewReportRepository {
     return prisma.reviewReport.findFirst({
       where: { inquiryId },
       orderBy: { createdAt: "desc" },
-      include: { evidences: true },
+      include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
     }) as Promise<ReviewReport | null>;
   }
 
@@ -89,7 +89,7 @@ export class ReviewReportRepository implements IReviewReportRepository {
         approvedByUserId: null,
       },
       orderBy: { createdAt: "asc" },
-      include: { evidences: true },
+      include: { evidences: true, inquiry: { select: { proposedMarkName: true, title: true } } },
     }) as Promise<ReviewReport[]>;
   }
 
