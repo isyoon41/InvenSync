@@ -228,9 +228,11 @@ export function Header({ firmName, userName, userRole }: HeaderProps) {
           {/* Logo + Nav */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex-shrink-0">
-              <span className="text-xl font-bold tracking-tight text-blue-600">
-                InvenSync
-              </span>
+              <img
+                src="/logo.png"
+                alt="InvenSync"
+                className="h-8 w-auto object-contain"
+              />
             </Link>
 
             <nav className="hidden md:flex items-center gap-0.5">
