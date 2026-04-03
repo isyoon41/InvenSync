@@ -42,11 +42,17 @@ export class SearchExecuteWorkflow {
       });
 
       // Get candidates to search for
+      // 선택된 후보 우선, 없으면 전체 후보 폴백 (isSelected 미설정 상태 대응)
       let candidates: import("@ip-review/domain").GoodsCandidate[] = [];
       if (searchJob.candidateRunId) {
         candidates = await this.repositories.candidates.findSelectedByRun(
           searchJob.candidateRunId
         );
+        if (candidates.length === 0) {
+          candidates = await this.repositories.candidates.findByCandidateRun(
+            searchJob.candidateRunId
+          );
+        }
       }
 
       if (candidates.length === 0 && !request.candidateIds) {
@@ -57,9 +63,10 @@ export class SearchExecuteWorkflow {
         );
       }
 
-      // Execute search for each candidate
+      // Execute search for each candidate (최대 5개 — KIPRIS 할당량 절약)
+      const searchCandidates = candidates.slice(0, 5);
       const allResults: any[] = [];
-      for (const candidate of candidates) {
+      for (const candidate of searchCandidates) {
         const searchResults = await request.searchPort.search({
           sourceSystem: "kipris",
           mode: "exact_mark",
