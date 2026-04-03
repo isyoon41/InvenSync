@@ -35,6 +35,9 @@ importers:
       '@ip-review/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@ip-review/kipris-client':
+        specifier: workspace:*
+        version: link:../../packages/kipris-client
       '@ip-review/workflows':
         specifier: workspace:*
         version: link:../../packages/workflows
@@ -99,6 +102,19 @@ importers:
 
   packages/domain:
     devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/kipris-client:
+    dependencies:
+      '@ip-review/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: ^20.10.0
+        version: 20.19.37
       typescript:
         specifier: ^5.3.3
         version: 5.9.3

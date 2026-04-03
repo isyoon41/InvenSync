@@ -21,6 +21,8 @@ export default function InquiryDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchMessage, setSearchMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'search'>('overview');
 
   useEffect(() => {
@@ -103,6 +105,37 @@ export default function InquiryDetailPage({ params }: PageProps) {
     }
   };
 
+  const handleSearch = async () => {
+    setSearching(true);
+    setSearchMessage(null);
+    try {
+      const res = await fetch('/api/search-jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inquiryId: params.id }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setSearchMessage(result.message || '검색이 완료되었습니다');
+        // 결과 갱신
+        const updatedInquiry = await fetch(`/api/inquiries/${params.id}`);
+        const updatedData = await updatedInquiry.json();
+        setInquiry(updatedData);
+        const resultsRes = await fetch(`/api/search-results?searchJobId=${result.searchJobId}`);
+        const resultsData = await resultsRes.json();
+        setResults(resultsData.items || []);
+        setActiveTab('search');
+      } else {
+        setSearchMessage(`오류: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to execute search:', error);
+      setSearchMessage('검색 실행 중 오류가 발생했습니다');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -155,6 +188,22 @@ export default function InquiryDetailPage({ params }: PageProps) {
           onProcess={inquiry.status === 'new' ? handleParse : handleProcess}
           processing={inquiry.status === 'new' ? parsing : processing}
         />
+
+        {/* 유사상표 검색 버튼 */}
+        {(inquiry.status === 'candidate_ready' || inquiry.status === 'parsed') && (
+          <div className="mt-4 flex items-center gap-4">
+            <button
+              onClick={handleSearch}
+              disabled={searching}
+              className="px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+            >
+              {searching ? '🔍 검색 중...' : '🔍 유사상표 검색 시작'}
+            </button>
+            {searchMessage && (
+              <span className="text-sm text-gray-600">{searchMessage}</span>
+            )}
+          </div>
+        )}
 
         {/* 정규화 결과 패널 */}
         {(inquiry.status !== 'new' || parsedData) && (
