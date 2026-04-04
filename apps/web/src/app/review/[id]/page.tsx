@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Header, ReviewReport } from '@/components';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import type { ReviewReport as ReviewReportType } from '@ip-review/domain';
+import type { ReviewReport as ReviewReportType, SearchResult } from '@ip-review/domain';
 
 interface PageProps {
   params: {
@@ -15,6 +15,7 @@ interface PageProps {
 export default function ReviewDetailPage({ params }: PageProps) {
   const { data: session } = useSession();
   const [report, setReport] = useState<ReviewReportType | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -22,8 +23,20 @@ export default function ReviewDetailPage({ params }: PageProps) {
     const fetchReport = async () => {
       try {
         const res = await fetch(`/api/review-reports/${params.id}`);
-        const data = await res.json();
+        const data: ReviewReportType = await res.json();
         setReport(data);
+
+        // evidences가 없거나 searchResult가 없으면 searchJobId로 직접 조회
+        const hasEvidenceData = data.evidences && data.evidences.length > 0 &&
+          (data.evidences[0] as any).searchResult;
+
+        if (!hasEvidenceData && data.searchJobId) {
+          const srRes = await fetch(`/api/search-results?searchJobId=${data.searchJobId}`);
+          if (srRes.ok) {
+            const srData = await srRes.json();
+            setSearchResults(srData.items ?? []);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch report:', error);
       } finally {
@@ -76,8 +89,8 @@ export default function ReviewDetailPage({ params }: PageProps) {
           userRole={session?.user?.role || 'reviewer'}
           userDepartment={session?.user?.department || undefined}
         />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">불러오는 중...</div>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center text-slate-500 py-20">불러오는 중...</div>
         </main>
       </>
     );
@@ -92,8 +105,8 @@ export default function ReviewDetailPage({ params }: PageProps) {
           userRole={session?.user?.role || 'reviewer'}
           userDepartment={session?.user?.department || undefined}
         />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">리포트를 찾을 수 없습니다</div>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center text-slate-500 py-20">리포트를 찾을 수 없습니다</div>
         </main>
       </>
     );
@@ -108,42 +121,26 @@ export default function ReviewDetailPage({ params }: PageProps) {
         userDepartment={session?.user?.department || undefined}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center gap-4">
-          <Link href="/review" className="text-blue-600 hover:text-blue-700">
-            ← 검토 리포트 목록
-          </Link>
-          <span className="text-gray-600">/</span>
-          <span className="text-gray-900">검토 리포트</span>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex items-center gap-2 text-sm">
+          <Link href="/review" className="text-blue-600 hover:text-blue-700">← 검토 리포트 목록</Link>
+          <span className="text-slate-300">/</span>
+          <span className="text-slate-500">검토 리포트</span>
         </div>
+
+        {saving && (
+          <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            저장 중...
+          </div>
+        )}
 
         <ReviewReport
           report={report}
+          fallbackSearchResults={searchResults}
           editable={!report.approvedAt}
           onSave={handleSave}
           onApprove={handleApprove}
         />
-
-        {/* 근거 자료 목록 */}
-        {report.evidences && report.evidences.length > 0 && (
-          <div className="mt-8 bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">근거 자료</h2>
-            <div className="space-y-4">
-              {report.evidences.map((evidence, index) => (
-                <div key={evidence.id} className="border border-gray-200 rounded p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-medium text-gray-900">근거 {index + 1}</h3>
-                      {evidence.note && (
-                        <p className="text-sm text-gray-600 mt-2">{evidence.note}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </main>
     </>
   );

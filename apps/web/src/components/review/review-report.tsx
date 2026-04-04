@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import type { ReviewReport, ReviewEvidenceSearchResult } from '@ip-review/domain';
+import type { ReviewReport, ReviewEvidenceSearchResult, SearchResult } from '@ip-review/domain';
 
 export interface ReviewReportProps {
   report: ReviewReport;
+  fallbackSearchResults?: SearchResult[];
   editable?: boolean;
   onSave?: (updates: Partial<ReviewReport>) => void;
   onApprove?: () => void;
@@ -100,6 +101,7 @@ function SectionCard({ icon, title, accentColor, headerBg, children }: SectionPr
 /* ── Main Component ──────────────────────────────────────────── */
 export function ReviewReport({
   report,
+  fallbackSearchResults = [],
   editable = false,
   onSave,
   onApprove,
@@ -119,6 +121,25 @@ export function ReviewReport({
   };
 
   const isApproved = !!report.approvedAt;
+
+  // evidences에 searchResult가 있으면 사용, 없으면 fallback 검색 결과로 변환
+  const rawEvidences = report.evidences ?? [];
+  const hasJoinedResults = rawEvidences.length > 0 && (rawEvidences[0] as any).searchResult;
+
+  const evidenceItems: ReviewEvidenceSearchResult[] = hasJoinedResults
+    ? rawEvidences.map((ev) => (ev as any).searchResult as ReviewEvidenceSearchResult).filter(Boolean)
+    : fallbackSearchResults.slice(0, 5).map((sr) => ({
+        id: sr.id,
+        markName: sr.markName,
+        applicationNumber: sr.applicationNumber,
+        registerNumber: sr.registerNumber,
+        applicantName: sr.applicantName,
+        classNo: sr.classNo,
+        statusLabel: sr.statusLabel,
+        relevanceScore: sr.relevanceScore,
+        designatedGoodsSummary: sr.designatedGoodsSummary,
+      }));
+
   const evidences = report.evidences ?? [];
 
   return (
@@ -202,15 +223,13 @@ export function ReviewReport({
             ) : (
               <p className="text-sm text-slate-400 italic">위험 분석 없음</p>
             )}
-            {evidences.length > 0 && evidences[0].searchResult && (
+            {evidenceItems.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">근거 상표</p>
                 <div className="flex flex-wrap gap-2">
-                  {evidences.map((ev, i) =>
-                    ev.searchResult ? (
-                      <EvidenceBadge key={ev.id} result={ev.searchResult} index={i} />
-                    ) : null
-                  )}
+                  {evidenceItems.map((sr, i) => (
+                    <EvidenceBadge key={sr.id} result={sr} index={i} />
+                  ))}
                 </div>
               </div>
             )}
@@ -272,21 +291,20 @@ export function ReviewReport({
       </SectionCard>
 
       {/* 참고 상표 (KIPRIS 근거 자료) */}
-      {evidences.length > 0 && (
+      {evidenceItems.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden"
           style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
         >
           <div className="px-5 py-3.5 bg-amber-50 border-b border-slate-100 flex items-center gap-2.5">
             <span className="text-base">🔍</span>
             <h2 className="text-sm font-bold uppercase tracking-wide text-amber-700">참고 상표 (KIPRIS 근거 자료)</h2>
-            <span className="ml-auto text-xs text-slate-400">{evidences.length}건</span>
+            <span className="ml-auto text-xs text-slate-400">{evidenceItems.length}건</span>
           </div>
           <div className="divide-y divide-slate-50">
-            {evidences.map((evidence, index) => {
-              const sr = evidence.searchResult;
-              const kiprisUrl = buildKiprisUrl(sr?.applicationNumber, sr?.markName);
+            {evidenceItems.map((sr, index) => {
+              const kiprisUrl = buildKiprisUrl(sr.applicationNumber, sr.markName);
               return (
-                <div key={evidence.id} className="px-5 py-4 flex items-start gap-4">
+                <div key={sr.id} className="px-5 py-4 flex items-start gap-4">
                   {/* 번호 */}
                   <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                     {index + 1}
@@ -296,9 +314,9 @@ export function ReviewReport({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <span className="font-semibold text-sm text-slate-900">
-                        {sr?.markName ?? '(상표명 없음)'}
+                        {sr.markName || '(상표명 없음)'}
                       </span>
-                      {sr?.statusLabel && (
+                      {sr.statusLabel && (
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
                           sr.statusLabel.includes('등록') ? 'bg-emerald-100 text-emerald-700' :
                           sr.statusLabel.includes('출원') ? 'bg-blue-100 text-blue-700' :
@@ -308,7 +326,7 @@ export function ReviewReport({
                           {sr.statusLabel}
                         </span>
                       )}
-                      {sr?.classNo && (
+                      {sr.classNo && (
                         <span className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-600 rounded-full">
                           제{sr.classNo}류
                         </span>
@@ -316,16 +334,16 @@ export function ReviewReport({
                     </div>
 
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      {sr?.applicantName && (
+                      {sr.applicantName && (
                         <span>출원인: <span className="text-slate-700">{sr.applicantName}</span></span>
                       )}
-                      {sr?.applicationNumber && (
+                      {sr.applicationNumber && (
                         <span>출원번호: <span className="font-mono text-slate-700">{sr.applicationNumber}</span></span>
                       )}
-                      {sr?.registerNumber && (
+                      {sr.registerNumber && (
                         <span>등록번호: <span className="font-mono text-slate-700">{sr.registerNumber}</span></span>
                       )}
-                      {sr?.relevanceScore != null && (
+                      {sr.relevanceScore != null && (
                         <span>유사도: <span className={`font-semibold ${
                           sr.relevanceScore >= 0.8 ? 'text-red-600' :
                           sr.relevanceScore >= 0.5 ? 'text-amber-600' : 'text-slate-600'
@@ -333,11 +351,8 @@ export function ReviewReport({
                       )}
                     </div>
 
-                    {sr?.designatedGoodsSummary && (
+                    {sr.designatedGoodsSummary && (
                       <p className="mt-1 text-xs text-slate-400 line-clamp-1">{sr.designatedGoodsSummary}</p>
-                    )}
-                    {evidence.note && (
-                      <p className="mt-1 text-xs text-slate-500 italic">{evidence.note}</p>
                     )}
                   </div>
 
