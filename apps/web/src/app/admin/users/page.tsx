@@ -41,6 +41,8 @@ export default function AdminUsersPage() {
   const [addModal, setAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', email: '', password: '', department: '', role: 'operator' as UserRole });
   const [toast, setToast] = useState('');
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteUserName, setDeleteUserName] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -105,6 +107,21 @@ export default function AdminUsersPage() {
     });
     fetchUsers();
     showToast(user.isActive ? '계정이 비활성화되었습니다.' : '계정이 활성화되었습니다.');
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserId) return;
+    const res = await fetch(`/api/admin/users/${deleteUserId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) {
+      setDeleteUserId(null);
+      setDeleteUserName('');
+      fetchUsers();
+      showToast('사용자가 삭제되었습니다.');
+    } else {
+      showToast(data.error || '삭제 실패');
+      setDeleteUserId(null);
+    }
   };
 
   const handleAddUser = async () => {
@@ -231,6 +248,13 @@ export default function AdminUsersPage() {
                       >
                         {user.isActive ? '비활성화' : '활성화'}
                       </button>
+                      <button
+                        onClick={() => { setDeleteUserId(user.id); setDeleteUserName(user.name); }}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                        disabled={user.id === session?.user?.id}
+                      >
+                        삭제
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -292,6 +316,28 @@ export default function AdminUsersPage() {
                 className="btn-primary flex-1 disabled:opacity-50"
               >
                 초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {deleteUserId && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">사용자 삭제</h3>
+            <p className="text-sm text-slate-500 mb-1">
+              <span className="font-semibold text-slate-800">{deleteUserName}</span> 계정을 삭제하시겠습니까?
+            </p>
+            <p className="text-sm text-red-500 mb-6">삭제된 계정은 로그인이 불가능하며, 이 작업은 되돌릴 수 없습니다.</p>
+            <div className="flex gap-3">
+              <button onClick={() => { setDeleteUserId(null); setDeleteUserName(''); }} className="btn-secondary flex-1">취소</button>
+              <button
+                onClick={handleDeleteUser}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                삭제
               </button>
             </div>
           </div>
