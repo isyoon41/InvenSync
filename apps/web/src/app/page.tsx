@@ -85,7 +85,7 @@ export default async function HomePage() {
                   {session ? '접수함 바로가기 →' : '시작하기 →'}
                 </Link>
                 <Link
-                  href="/inquiries/new"
+                  href={session ? '/inquiries/new' : '/login'}
                   className="btn-secondary px-8 py-4 text-base"
                 >
                   새 의뢰 등록
