@@ -67,16 +67,16 @@ const NAV_ITEMS: NavItem[] = [
         title: '의뢰 접수 관리',
         items: [
           {
-            label: '전체 접수 목록',
-            desc: '접수된 모든 상표 검토 의뢰를 확인합니다',
-            href: '/inquiries',
-            badge: null,
-          },
-          {
             label: '새 의뢰 등록',
             desc: '신규 고객 상표 검토 의뢰를 등록합니다',
             href: '/inquiries/new',
             badge: 'NEW',
+          },
+          {
+            label: '전체 접수 목록',
+            desc: '접수된 모든 상표 검토 의뢰를 확인합니다',
+            href: '/inquiries',
+            badge: null,
           },
         ],
       },
