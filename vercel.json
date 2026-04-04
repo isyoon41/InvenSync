@@ -1,6 +1,5 @@
 {
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "prisma generate --schema=../../packages/db/prisma/schema.prisma && next build",
   "framework": "nextjs",
   "regions": ["icn1"]
 }
