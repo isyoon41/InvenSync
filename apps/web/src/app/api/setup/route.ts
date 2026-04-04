@@ -39,7 +39,6 @@ export async function POST(req: NextRequest) {
       firm = await prisma.firm.create({
         data: {
           name: 'InvenSync',
-          plan: 'trial',
         },
       });
     }
