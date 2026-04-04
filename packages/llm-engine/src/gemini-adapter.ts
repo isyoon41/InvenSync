@@ -145,10 +145,12 @@ ${request.classNo ? `[참고 류] ${request.classNo}류` : ''}
 다음 조건을 반드시 지키세요:
 1. 한국 특허청 상품류 구분(Nice 분류 45류 체계)에 정확히 맞는 지정상품명 사용
 2. 각 항목은 별개의 류(classNo)에 속할 수 있음
-3. 고시 명칭(official notice name) 위주로 선정하되 AI 추천(ai_generated)도 포함
+3. 고시 명칭 위주로 선정하되 AI 추천 용어도 포함
 4. confidence: 해당 상품이 본 상표 출원에 적합한 정도 (0~1)
 5. rationale: 해당 상품을 추천하는 이유 (한 줄, 한국어)
-6. sourceType은 반드시 "ai_generated" 사용
+6. sourceType 분류 기준 (정확히 따를 것):
+   - "official_notice_name": 특허청 고시 상품명칭 목록에 실제 등재된 공식 명칭
+   - "ai_generated": 위 목록에 없거나 불확실한 AI 추천 용어
 7. ${request.count ?? 8}개 후보 생성
 
 지정상품명은 한국어 공식 명칭을 사용하고 너무 광범위하거나 너무 좁지 않게 선정하세요.`;
