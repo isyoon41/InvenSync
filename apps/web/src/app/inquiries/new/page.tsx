@@ -17,7 +17,7 @@ export default async function NewInquiryPage() {
   return (
     <>
       <Header
-        firmName={session.user.firmId || 'IP Review Desk'}
+        firmName={session.user.firmName || session.user.firmId || 'IP Review Desk'}
         userName={session.user.name || '사용자'}
         userRole={session.user.role || 'operator'}
         userDepartment={session.user.department || undefined}
@@ -32,7 +32,11 @@ export default async function NewInquiryPage() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <InquiryForm firmId={firmId} />
+          <InquiryForm
+            firmId={firmId}
+            defaultHandlerName={session.user.name || ''}
+            defaultHandlerDept={session.user.department || ''}
+          />
         </div>
       </main>
     </>

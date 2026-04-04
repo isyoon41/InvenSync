@@ -1,7 +1,15 @@
 import { withAuth } from 'next-auth/middleware';
 
+const secret = process.env.NEXTAUTH_SECRET ?? 'dev-secret-change-in-production';
+
 export default withAuth({
-  secret: process.env.NEXTAUTH_SECRET || 'dev-secret-change-in-production',
+  secret,
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    authorized: ({ token }) => !!token,
+  },
 });
 
 export const config = {

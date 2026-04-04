@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 
 export interface InquiryFormProps {
   firmId?: string;
+  defaultHandlerName?: string;
+  defaultHandlerDept?: string;
 }
 
 interface FormData {
@@ -22,12 +24,14 @@ interface FormErrors {
   content?: string;
 }
 
-export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
+export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', defaultHandlerDept = '' }: InquiryFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [dragActive, setDragActive] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
+  const [handlerName, setHandlerName] = useState(defaultHandlerName);
+  const [handlerDept, setHandlerDept] = useState(defaultHandlerDept);
   const [formData, setFormData] = useState<FormData>({
     title: '',
     clientName: '',
@@ -141,6 +145,40 @@ export function InquiryForm({ firmId = 'demo-firm' }: InquiryFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* 담당자 정보 */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="white">
+              <path d="M5 1a2 2 0 100 4A2 2 0 005 1zM2 8c0-1.5 1.3-2.5 3-2.5S8 6.5 8 8" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+            </svg>
+          </div>
+          <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">담당자 정보</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">담당자명</label>
+            <input
+              type="text"
+              value={handlerName}
+              onChange={(e) => setHandlerName(e.target.value)}
+              placeholder="담당자 이름"
+              className="block w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">부서명</label>
+            <input
+              type="text"
+              value={handlerDept}
+              onChange={(e) => setHandlerDept(e.target.value)}
+              placeholder="소속 부서"
+              className="block w-full px-3 py-2 text-sm border border-blue-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* 검토 제목 */}
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700">

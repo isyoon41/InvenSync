@@ -93,15 +93,7 @@ export function InquiryDetail({
         </div>
       )}
 
-      {/* 메타데이터 */}
-      {inquiry.metadata && Object.keys(inquiry.metadata).length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">메타데이터</h2>
-          <pre className="text-sm text-gray-700 bg-gray-50 p-4 rounded overflow-auto">
-            {JSON.stringify(inquiry.metadata, null, 2)}
-          </pre>
-        </div>
-      )}
+      {/* 메타데이터 - 내부용, 사용자에게 미노출 */}
     </div>
   );
 }
