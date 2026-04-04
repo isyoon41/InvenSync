@@ -27,9 +27,10 @@ export interface GeneratedCandidate {
   term: string;
   normalizedTerm: string;
   classNo: number;
-  sourceType: "ai_generated" | "manual";
+  sourceType: "official_notice_name" | "accepted_similar_name" | "ai_generated" | "manual" | "competitor_reference";
   confidence: number;
   rationale: string;
+  similarityGroupCodes?: string[];
 }
 
 export interface ReportGenerationRequest {

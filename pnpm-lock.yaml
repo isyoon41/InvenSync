@@ -159,6 +159,9 @@ importers:
       '@ip-review/domain':
         specifier: workspace:*
         version: link:../domain
+      '@ip-review/llm-engine':
+        specifier: workspace:*
+        version: link:../llm-engine
     devDependencies:
       '@types/node':
         specifier: ^20.10.0

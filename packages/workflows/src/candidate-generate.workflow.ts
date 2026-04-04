@@ -2,6 +2,7 @@ import type { ILLMPort, GeneratedCandidate } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
+import { RecommendGoodsEngine } from "@ip-review/llm-engine";
 
 export interface CandidateGenerateRequest {
   inquiryId: string;
@@ -62,8 +63,12 @@ export class CandidateGenerateWorkflow {
         },
       });
 
-      // Generate candidates using LLM
-      const generatedCandidates = await request.llmPort.generateCandidates({
+      // 상품 후보 추천 엔진: DB(공식·유사 인정 명칭) + LLM(AI 후보) 혼합 생성
+      const engine = new RecommendGoodsEngine(
+        this.repositories.goodsTerms,
+        request.llmPort
+      );
+      const generatedCandidates = await engine.recommend({
         proposedMarkName: parsedRequest.markNameNormalized || "",
         goodsDescription: parsedRequest.goodsDescriptionNormalized || "",
         count: 8,
