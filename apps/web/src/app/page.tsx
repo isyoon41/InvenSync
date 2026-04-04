@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { LogoutButton } from '@/components/layout/logout-button';
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -22,9 +23,12 @@ export default async function HomePage() {
               검토 리포트
             </Link>
             {session ? (
-              <Link href="/inquiries" className="btn-primary">
-                대시보드 →
-              </Link>
+              <div className="flex items-center gap-2">
+                <LogoutButton />
+                <Link href="/inquiries" className="btn-primary">
+                  대시보드 →
+                </Link>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Link href="/login" className="px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-150">
