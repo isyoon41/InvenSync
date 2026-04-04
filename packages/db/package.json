@@ -18,7 +18,7 @@
   "dependencies": {
     "@ip-review/domain": "workspace:*",
     "@prisma/client": "^5.9.1",
-    "bcryptjs": "^3.0.3"
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
