@@ -1,5 +1,8 @@
 {
-  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
   "framework": "nextjs",
+  "outputDirectory": ".next",
   "regions": ["icn1"]
 }
