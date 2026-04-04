@@ -28,6 +28,9 @@ export default function ReviewPage() {
   const [approvedReports, setApprovedReports] = useState<ReviewReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved'>('pending');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!session?.user?.firmId) { setLoading(false); return; }
@@ -55,8 +58,56 @@ export default function ReviewPage() {
     fetchAll();
   }, [session?.user?.firmId]);
 
+  // 탭 전환 시 선택 초기화
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setConfirmDelete(false);
+  }, [filter]);
+
   const displayReports = filter === 'pending' ? pendingReports : approvedReports;
   const totalCount = pendingReports.length + approvedReports.length;
+
+  const allSelected = displayReports.length > 0 && selectedIds.size === displayReports.length;
+  const someSelected = selectedIds.size > 0;
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayReports.map((r) => r.id)));
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setDeleting(true);
+    try {
+      await Promise.all(
+        [...selectedIds].map((id) =>
+          fetch(`/api/review-reports/${id}`, { method: 'DELETE' })
+        )
+      );
+      const remove = (list: ReviewReport[]) => list.filter((r) => !selectedIds.has(r.id));
+      if (filter === 'pending') {
+        setPendingReports((prev) => remove(prev));
+      } else {
+        setApprovedReports((prev) => remove(prev));
+      }
+      setSelectedIds(new Set());
+    } finally {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
 
   return (
     <>
@@ -99,7 +150,7 @@ export default function ReviewPage() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-6">
           {([
             { key: 'pending',  label: '승인 대기', count: pendingReports.length },
             { key: 'approved', label: '승인 완료', count: approvedReports.length },
@@ -121,6 +172,40 @@ export default function ReviewPage() {
               </span>
             </button>
           ))}
+
+          {/* 선택 삭제 버튼 */}
+          {someSelected && (
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  confirmDelete
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
+                }`}
+              >
+                {deleting ? (
+                  <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
+                  </svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M1.5 3h9M4.5 3V2h3v1M2.5 3l.5 7h6l.5-7" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+                {confirmDelete ? `정말 삭제 (${selectedIds.size}건)` : `선택 삭제 (${selectedIds.size}건)`}
+              </button>
+              {confirmDelete && (
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  취소
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Report Table */}
@@ -150,6 +235,14 @@ export default function ReviewPage() {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
+                    <th className="table-header-cell w-10">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+                      />
+                    </th>
                     <th className="table-header-cell">상표명</th>
                     <th className="table-header-cell">위험도</th>
                     <th className="table-header-cell">상태</th>
@@ -160,9 +253,21 @@ export default function ReviewPage() {
                 <tbody>
                   {displayReports.map((report) => {
                     const risk = RISK_CONFIG[detectRiskLevel(report.riskNote)];
+                    const isSelected = selectedIds.has(report.id);
 
                     return (
-                      <tr key={report.id} className="table-row">
+                      <tr
+                        key={report.id}
+                        className={`table-row ${isSelected ? 'bg-blue-50' : ''}`}
+                      >
+                        <td className="table-cell w-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleOne(report.id)}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+                          />
+                        </td>
                         <td className="table-cell">
                           <div className="text-sm font-semibold text-slate-900">
                             {(report as any).inquiry?.proposedMarkName || (
