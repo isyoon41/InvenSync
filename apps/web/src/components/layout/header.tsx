@@ -177,6 +177,7 @@ export interface HeaderProps {
   firmName: string;
   userName?: string;
   userRole?: string;
+  userDepartment?: string;
 }
 
 const roleLabels: Record<string, string> = {
@@ -186,7 +187,7 @@ const roleLabels: Record<string, string> = {
 };
 
 /* ── Component ──────────────────────────────────────────────────── */
-export function Header({ firmName, userName, userRole }: HeaderProps) {
+export function Header({ firmName, userName, userRole, userDepartment }: HeaderProps) {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('');
@@ -294,6 +295,9 @@ export function Header({ firmName, userName, userRole }: HeaderProps) {
               {userName && (
                 <div className="text-xs text-slate-500 mt-0.5">
                   {userName}
+                  {userDepartment && (
+                    <span className="ml-1 text-slate-400">· {userDepartment}</span>
+                  )}
                   {roleLabel && (
                     <span className="ml-1 text-slate-400">· {roleLabel}</span>
                   )}

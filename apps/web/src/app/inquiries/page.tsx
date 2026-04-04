@@ -24,29 +24,29 @@ async function getInquiries(firmId: string): Promise<Inquiry[]> {
 const STATUS_STATS = [
   {
     key: 'new',
-    label: '신규 접수',
-    desc: '검토 전 새 의뢰',
+    label: '?�규 ?�수',
+    desc: '검???????�뢰',
     accent: 'bg-slate-400',
     filter: (s: string) => s === 'new',
   },
   {
     key: 'in_progress',
-    label: '진행 중',
-    desc: '정규화 · 설계 단계',
+    label: '진행 �?,
+    desc: '?�규??· ?�계 ?�계',
     accent: 'bg-blue-500',
     filter: (s: string) => ['parsed', 'candidate_ready'].includes(s),
   },
   {
     key: 'searched',
-    label: '검색 완료',
-    desc: '유사상표 검색 완료',
+    label: '검???�료',
+    desc: '?�사?�표 검???�료',
     accent: 'bg-amber-400',
     filter: (s: string) => s === 'searched',
   },
   {
     key: 'approved',
-    label: '승인 완료',
-    desc: '검토 승인 처리됨',
+    label: '?�인 ?�료',
+    desc: '검???�인 처리??,
     accent: 'bg-emerald-500',
     filter: (s: string) => ['reviewed', 'approved', 'exported'].includes(s),
   },
@@ -66,20 +66,21 @@ export default async function InquiriesPage() {
   return (
     <>
       <Header
-        firmName={session.user.firmId}
-        userName={session.user.name || '사용자'}
+        firmName={session.user.firmName || session.user.firmId}
+        userName={session.user.name || '?�용??}
         userRole={session.user.role || 'operator'}
+        userDepartment={session.user.department || undefined}
       />
 
       <main className="page-container">
         {/* Page Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">접수함</h1>
-            <p className="page-description">고객 상표 검토 의뢰를 관리합니다</p>
+            <h1 className="page-title">?�수??/h1>
+            <p className="page-description">고객 ?�표 검???�뢰�?관리합?�다</p>
           </div>
           <Link href="/inquiries/new" className="btn-primary">
-            + 새로 등록
+            + ?�로 ?�록
           </Link>
         </div>
 

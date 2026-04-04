@@ -180,9 +180,10 @@ export default function InquiryDetailPage({ params }: PageProps) {
     return (
       <>
         <Header
-          firmName={session?.user?.firmId || 'IP Review Desk'}
+          firmName={session?.user?.firmName || session?.user?.firmId || 'IP Review Desk'}
           userName={session?.user?.name || '사용자'}
           userRole={session?.user?.role || 'operator'}
+          userDepartment={session?.user?.department || undefined}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">불러오는 중...</div>
@@ -195,9 +196,10 @@ export default function InquiryDetailPage({ params }: PageProps) {
     return (
       <>
         <Header
-          firmName={session?.user?.firmId || 'IP Review Desk'}
+          firmName={session?.user?.firmName || session?.user?.firmId || 'IP Review Desk'}
           userName={session?.user?.name || '사용자'}
           userRole={session?.user?.role || 'operator'}
+          userDepartment={session?.user?.department || undefined}
         />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">의뢰를 찾을 수 없습니다</div>
@@ -209,9 +211,10 @@ export default function InquiryDetailPage({ params }: PageProps) {
   return (
     <>
       <Header
-        firmName={session?.user?.firmId || 'IP Review Desk'}
+        firmName={session?.user?.firmName || session?.user?.firmId || 'IP Review Desk'}
         userName={session?.user?.name || '사용자'}
         userRole={session?.user?.role || 'operator'}
+        userDepartment={session?.user?.department || undefined}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -140,9 +140,10 @@ export default function AdminUsersPage() {
   return (
     <>
       <Header
-        firmName={session?.user?.firmId || ''}
+        firmName={session?.user?.firmName || session?.user?.firmId || ''}
         userName={session?.user?.name || ''}
         userRole={session?.user?.role || 'operator'}
+        userDepartment={session?.user?.department || undefined}
       />
 
       {/* Toast */}

@@ -36,13 +36,13 @@ async function getReportSummary(firmId: string) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  new:             '신규 접수',
-  parsed:          '정규화 완료',
-  candidate_ready: '지정상품 완료',
-  searched:        '검색 완료',
-  reviewed:        '검토 완료',
-  approved:        '승인됨',
-  exported:        '내보내기 완료',
+  new:             '?�규 ?�수',
+  parsed:          '?�규???�료',
+  candidate_ready: '지?�상???�료',
+  searched:        '검???�료',
+  reviewed:        '검???�료',
+  approved:        '?�인??,
+  exported:        '?�보?�기 ?�료',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -81,9 +81,10 @@ export default async function StatsPage() {
   return (
     <>
       <Header
-        firmName={session.user.firmId}
-        userName={session.user.name || '사용자'}
+        firmName={session.user.firmName || session.user.firmId}
+        userName={session.user.name || '?�용??}
         userRole={session.user.role || 'operator'}
+        userDepartment={session.user.department || undefined}
       />
 
       <main className="page-container">
@@ -91,25 +92,24 @@ export default async function StatsPage() {
         <div className="page-header">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Link href="/analytics/kipris" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">통계</Link>
+              <Link href="/analytics/kipris" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">?�계</Link>
               <span className="text-slate-300">/</span>
-              <span className="text-xs font-semibold text-blue-600">처리 통계</span>
+              <span className="text-xs font-semibold text-blue-600">처리 ?�계</span>
             </div>
-            <h1 className="page-title">처리 통계</h1>
-            <p className="page-description">기간별 상표 검토 처리 현황을 확인합니다</p>
+            <h1 className="page-title">처리 ?�계</h1>
+            <p className="page-description">기간�??�표 검??처리 ?�황???�인?�니??/p>
           </div>
           <Link href="/analytics/kipris" className="btn-secondary text-sm">
-            KIPRIS 사용 현황 →
-          </Link>
+            KIPRIS ?�용 ?�황 ??          </Link>
         </div>
 
-        {/* 요약 카드 */}
+        {/* ?�약 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: '전체 의뢰',    value: total,                 accent: 'bg-blue-500',    desc: '누적 등록 건수' },
-            { label: '진행 중',      value: inProgress,            accent: 'bg-amber-400',   desc: '처리 중인 의뢰' },
-            { label: '리포트 생성',  value: reportSummary.total,   accent: 'bg-purple-500',  desc: '생성된 검토 리포트' },
-            { label: '승인 완료',    value: reportSummary.approved, accent: 'bg-emerald-500', desc: '승인 처리된 리포트' },
+            { label: '?�체 ?�뢰',    value: total,                 accent: 'bg-blue-500',    desc: '?�적 ?�록 건수' },
+            { label: '진행 �?,      value: inProgress,            accent: 'bg-amber-400',   desc: '처리 중인 ?�뢰' },
+            { label: '리포???�성',  value: reportSummary.total,   accent: 'bg-purple-500',  desc: '?�성??검??리포?? },
+            { label: '?�인 ?�료',    value: reportSummary.approved, accent: 'bg-emerald-500', desc: '?�인 처리??리포?? },
           ].map((s) => (
             <div key={s.label} className="stat-card">
               <div className="stat-card-value">{s.value}</div>
@@ -120,12 +120,12 @@ export default async function StatsPage() {
           ))}
         </div>
 
-        {/* 단계별 현황 */}
+        {/* ?�계�??�황 */}
         <div className="card p-6 mb-6">
-          <h3 className="text-sm font-bold text-slate-700 mb-5">의뢰 단계별 현황</h3>
+          <h3 className="text-sm font-bold text-slate-700 mb-5">?�뢰 ?�계�??�황</h3>
           {total === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-slate-400">등록된 의뢰가 없습니다</p>
+              <p className="text-sm text-slate-400">?�록???�뢰가 ?�습?�다</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -155,7 +155,7 @@ export default async function StatsPage() {
 
           {total > 0 && (
             <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between">
-              <div className="text-sm font-medium text-slate-500">전체 완료율</div>
+              <div className="text-sm font-medium text-slate-500">?�체 ?�료??/div>
               <div className="flex items-center gap-3">
                 <div className="w-32 bg-slate-100 rounded-full h-2">
                   <div
@@ -169,16 +169,16 @@ export default async function StatsPage() {
           )}
         </div>
 
-        {/* 리포트 승인 현황 */}
+        {/* 리포???�인 ?�황 */}
         <div className="card p-6">
-          <h3 className="text-sm font-bold text-slate-700 mb-5">리포트 승인 현황</h3>
+          <h3 className="text-sm font-bold text-slate-700 mb-5">리포???�인 ?�황</h3>
           {reportSummary.total === 0 ? (
             <div className="py-10 text-center">
-              <p className="text-sm text-slate-400">생성된 검토 리포트가 없습니다</p>
+              <p className="text-sm text-slate-400">?�성??검??리포?��? ?�습?�다</p>
             </div>
           ) : (
             <div className="flex items-center gap-10">
-              {/* 도넛 차트 */}
+              {/* ?�넛 차트 */}
               <div className="relative flex-shrink-0">
                 <svg width="110" height="110" viewBox="0 0 110 110">
                   <circle cx="55" cy="55" r="44" fill="none" stroke="#f1f5f9" strokeWidth="16"/>
@@ -194,14 +194,14 @@ export default async function StatsPage() {
                   <span className="text-xl font-bold text-slate-900">
                     {Math.round(reportSummary.approved / reportSummary.total * 100)}%
                   </span>
-                  <span className="text-[10px] text-slate-400">승인률</span>
+                  <span className="text-[10px] text-slate-400">?�인�?/span>
                 </div>
               </div>
 
               <div className="flex-1 space-y-3">
                 {[
-                  { label: '승인 완료', count: reportSummary.approved, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
-                  { label: '승인 대기', count: reportSummary.pending,  color: 'bg-amber-400',   textColor: 'text-amber-600' },
+                  { label: '?�인 ?�료', count: reportSummary.approved, color: 'bg-emerald-500', textColor: 'text-emerald-600' },
+                  { label: '?�인 ?��?, count: reportSummary.pending,  color: 'bg-amber-400',   textColor: 'text-amber-600' },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-4">
                     <div className="flex items-center gap-2 w-24">
@@ -217,7 +217,7 @@ export default async function StatsPage() {
                     <span className={`text-sm font-bold w-8 text-right ${item.textColor}`}>{item.count}</span>
                   </div>
                 ))}
-                <div className="pt-1 text-xs text-slate-400">전체 {reportSummary.total}건</div>
+                <div className="pt-1 text-xs text-slate-400">?�체 {reportSummary.total}�?/div>
               </div>
             </div>
           )}

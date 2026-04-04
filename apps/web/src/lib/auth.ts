@@ -43,7 +43,9 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           firmId: user.firmId,
+          firmName: user.firm.name,
           role: user.role,
+          department: user.department ?? undefined,
         };
       },
     }),
@@ -57,14 +59,18 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.userId = user.id;
         token.firmId = user.firmId;
+        token.firmName = user.firmName;
         token.role = user.role;
+        token.department = user.department;
       }
       return token;
     },
     async session({ session, token }) {
       session.user.id = token.userId;
       session.user.firmId = token.firmId;
+      session.user.firmName = token.firmName;
       session.user.role = token.role;
+      session.user.department = token.department;
       return session;
     },
   },
