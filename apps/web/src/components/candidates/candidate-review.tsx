@@ -9,7 +9,7 @@ export interface CandidateReviewProps {
   onUpdateRationale?: (id: string, rationale: string) => void;
 }
 
-const KIPRIS_GOODS_SEARCH = 'https://patent.kipris.or.kr/search/MainSearch.do?query=';
+const KIPRIS_GOODS_SEARCH = 'https://www.kipris.or.kr/khome/search/searchResult.do?tab=trademark&query=';
 
 function buildKiprisGoodsUrl(term: string): string {
   return `${KIPRIS_GOODS_SEARCH}${encodeURIComponent(term)}`;

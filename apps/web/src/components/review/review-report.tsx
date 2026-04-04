@@ -12,14 +12,16 @@ export interface ReviewReportProps {
 }
 
 /* ── KIPRIS Link Builder ─────────────────────────────────────── */
+const KIPRIS_TM_SEARCH = 'https://www.kipris.or.kr/khome/search/searchResult.do?tab=trademark&query=';
+
 function buildKiprisUrl(applicationNumber?: string, markName?: string): string {
   if (applicationNumber) {
     return `https://doi.kipris.or.kr/kdoi/searchKdoiInfoReadView.do?applno=${applicationNumber}`;
   }
   if (markName) {
-    return `https://patent.kipris.or.kr/search/MainSearch.do?query=${encodeURIComponent(markName)}`;
+    return `${KIPRIS_TM_SEARCH}${encodeURIComponent(markName)}`;
   }
-  return 'https://patent.kipris.or.kr/search/MainSearch.do';
+  return 'https://www.kipris.or.kr/khome/search/searchResult.do?tab=trademark';
 }
 
 /* ── Rich Text Renderer ──────────────────────────────────────── */
