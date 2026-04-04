@@ -188,44 +188,85 @@ ${request.classNo ? `[참고 류] ${request.classNo}류` : ''}
 
     const similarList = request.searchResults
       .slice(0, 10)
-      .map((r, i) =>
-        `${i + 1}. 상표명: "${r.markName}" / 출원인: ${r.applicantName ?? '미상'} / 유사도: ${
-          r.relevanceScore !== undefined ? Math.round(r.relevanceScore * 100) + '%' : '미산출'
-        }`
-      )
+      .map((r, i) => {
+        const score = r.relevanceScore !== undefined ? `유사도 ${Math.round(r.relevanceScore * 100)}%` : '유사도 미산출';
+        const status = r.statusLabel ? ` / 상태: ${r.statusLabel}` : '';
+        const appNo = r.applicationNumber ? ` / 출원번호: ${r.applicationNumber}` : '';
+        const classInfo = r.classNo ? ` / 제${r.classNo}류` : '';
+        return `${i + 1}. 상표명: "${r.markName}" / 출원인: ${r.applicantName ?? '미상'} / ${score}${status}${classInfo}${appNo}`;
+      })
       .join('\n');
 
-    const prompt = `당신은 한국 상표 검토 전문 변리사입니다. 아래 상표 검색 결과를 바탕으로 검토 리포트를 작성하세요.
+    const clientGreeting = request.clientName
+      ? `${request.clientName}${request.companyName ? ` (${request.companyName})` : ''}` + ' 고객님'
+      : '고객님';
 
-[검토 상표명]
-${request.markName}
+    const handlerSign = request.handlerName
+      ? `담당 변리사 ${request.handlerName} 드림`
+      : '담당 변리사 드림';
 
-[지정상품/서비스]
-${request.goods}
+    const prompt = `당신은 한국 상표 검토 전문 변리사입니다. 아래 정보를 바탕으로 검토 리포트의 4개 항목을 작성하세요.
 
-[유사상표 검색 결과 (상위 ${request.searchResults.slice(0, 10).length}건)]
-${similarList || '검색 결과 없음'}
+[의뢰 정보]
+- 상표명(원문): ${request.markName}
+- 상표명(정규화): ${request.parsedMarkName ?? request.markName}
+- 지정상품/서비스: ${request.parsedGoods ?? request.goods}
+- 업종 분류: ${request.industry ?? '미분류'}
 
-각 항목을 작성하세요:
+[고객 정보]
+- 고객명: ${request.clientName ?? '미기재'}
+- 회사명: ${request.companyName ?? '미기재'}
+- 이메일: ${request.clientEmail ?? '미기재'}
+
+[KIPRIS 유사상표 검색 결과 (상위 ${request.searchResults.slice(0, 10).length}건)]
+${similarList || '검색 결과 없음 — 충돌 상표 없음'}
+
+---
+
+각 항목을 아래 조건에 따라 작성하세요:
 
 1. summary (검토 요약)
-   - 유사상표 현황과 전반적인 출원 가능성을 3~5문장으로 요약
-   - 한국어, 전문적 어조
+   - 검색된 유사상표 총 건수와 주요 현황을 첫 문장에 명시
+   - 위험 수준(높음/중간/낮음) 및 근거를 2~3문장으로 서술
+   - KIPRIS 검색 데이터를 근거로 사용, 출원인·유사도·상태 언급
+   - 전문적이고 객관적인 한국어 어조
 
 2. riskNote (위험 분석)
-   - 가장 충돌 가능성이 높은 상표 2~3개 지목하고 이유 설명
-   - 위험 수준: 높음/중간/낮음으로 시작
-   - 한국어
+   - 반드시 "위험 수준: 높음/중간/낮음" 중 하나로 시작
+   - 유사도 상위 2~3개 상표를 지목하여 충돌 가능성 이유 설명
+   - 각 상표의 출원인, 유사도%, 상태를 구체적으로 인용
+   - 검색 결과가 없으면 "위험 수준: 낮음 — 충돌 상표 미검출"로 기재
 
 3. recommendation (출원 가능성 평가)
-   - "출원 권장", "조건부 출원", "출원 재검토 필요" 중 하나로 시작
-   - 구체적 이유와 조건(있는 경우) 설명
-   - 한국어, 2~3문장
+   - 반드시 "출원 권장", "조건부 출원", "출원 재검토 필요" 중 하나로 시작
+   - 구체적 근거(유사상표 현황, 식별력, 지정상품 범위)를 2~3문장으로 설명
+   - 조건이 있는 경우 명시
 
 4. clientReplyDraft (고객 회신 초안)
-   - 고객에게 보낼 정중한 한국어 이메일 본문 (인사말~결론 포함)
-   - 전문적이고 이해하기 쉬운 표현 사용
-   - 검토 결과와 권고사항 포함`;
+   다음 구조를 반드시 지키되, 각 단락 사이에 빈 줄(\\n\\n)을 넣어 단락을 명확히 구분하세요.
+
+   형식:
+   안녕하세요, ${clientGreeting}.
+
+   [상표명] 상표 검토 결과를 아래와 같이 안내드립니다.
+
+   ■ 검토 개요
+   - 검토 상표명: [정규화된 상표명]
+   - 지정상품/서비스: [지정상품 요약]
+   - 검토 기준: KIPRIS 특허청 상표 데이터베이스
+
+   ■ 유사상표 검색 결과
+   KIPRIS 검색 결과, 총 [N]건의 관련 상표가 검색되었습니다. [주요 상표 2~3개를 "상표명(출원인, 유사도%)" 형식으로 언급하거나, 결과 없음 명시]
+
+   ■ 위험 분석 및 출원 가능성
+   [riskNote 핵심 내용을 고객 친화적 언어로 요약. KIPRIS 데이터 근거 포함]
+
+   ■ 권고사항
+   [recommendation 내용을 권고 행동으로 안내. 다음 단계 포함]
+
+   추가 문의 사항이 있으시면 언제든지 연락 주시기 바랍니다.
+
+   ${handlerSign}`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();

@@ -39,7 +39,20 @@ export interface ReportGenerationRequest {
     markName: string;
     applicantName?: string;
     relevanceScore?: number;
+    statusLabel?: string;
+    applicationNumber?: string;
+    classNo?: number;
   }>;
+  // 고객 정보 (의뢰 등록 시 입력)
+  clientName?: string;
+  companyName?: string;
+  clientEmail?: string;
+  // AI 파싱 결과
+  parsedMarkName?: string;
+  parsedGoods?: string;
+  industry?: string;
+  // 담당 변리사
+  handlerName?: string;
   previousReports?: string[];
 }
 

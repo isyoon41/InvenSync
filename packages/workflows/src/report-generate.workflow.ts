@@ -38,15 +38,36 @@ export class ReportGenerateWorkflow {
         request.searchJobId
       );
 
-      // Generate report using LLM
+      // 최신 파싱 결과 조회
+      const parsedRequest = await prisma.parsedRequest.findFirst({
+        where: { inquiryId: inquiry.id, isCurrent: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // metadata에서 고객정보 추출
+      const meta = (inquiry.metadata ?? {}) as Record<string, any>;
+      const clientName: string | undefined = meta.clientName || undefined;
+      const companyName: string | undefined = meta.companyName || undefined;
+      const clientEmail: string | undefined = meta.clientEmail || inquiry.senderEmail || undefined;
+
+      // Generate report using LLM — 전체 컨텍스트 전달
       const generatedReport = await request.llmPort.generateReport({
-        markName: inquiry.proposedMarkName || "Unknown Mark",
-        goods: inquiry.rawText,
+        markName: parsedRequest?.markNameNormalized || inquiry.proposedMarkName || "Unknown Mark",
+        goods: parsedRequest?.goodsDescriptionNormalized || inquiry.rawText,
         searchResults: searchResults.map((r) => ({
           markName: r.markName,
-          applicantName: r.applicantName,
-          relevanceScore: r.relevanceScore,
+          applicantName: r.applicantName ?? undefined,
+          relevanceScore: r.relevanceScore ?? undefined,
+          statusLabel: r.statusLabel ?? undefined,
+          applicationNumber: r.applicationNumber ?? undefined,
+          classNo: r.classNo ?? undefined,
         })),
+        clientName,
+        companyName,
+        clientEmail,
+        parsedMarkName: parsedRequest?.markNameNormalized ?? undefined,
+        parsedGoods: parsedRequest?.goodsDescriptionNormalized ?? undefined,
+        industry: parsedRequest?.industryGuess ?? undefined,
       });
 
       // Create review report
