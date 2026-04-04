@@ -1,4 +1,9 @@
-import type { ITrademarkSearchPort, SearchResult } from "@ip-review/domain";
+import type {
+  ITrademarkSearchPort,
+  SearchResult,
+  GoodsCandidate,
+  TrademarkSearchRequest,
+} from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
@@ -14,6 +19,49 @@ export interface SearchExecuteResult {
   results: SearchResult[];
   totalCount: number;
   executionTimeMs: number;
+}
+
+// 후보의 유사군 코드 추출 (domain 타입 필드 또는 Prisma relation 객체 모두 지원)
+function getSimilarityCode(candidate: GoodsCandidate): string | undefined {
+  if (candidate.similarityGroupCodes?.[0]) return candidate.similarityGroupCodes[0];
+  const groups = (candidate as any).similarityGroups as
+    | Array<{ similarityGroupCode: string; isPrimary?: boolean }>
+    | undefined;
+  if (!groups || groups.length === 0) return undefined;
+  // isPrimary 코드 우선, 없으면 첫 번째
+  return (groups.find((g) => g.isPrimary) ?? groups[0]).similarityGroupCode;
+}
+
+// 후보 1개에 대해 실행할 검색 요청 목록 생성
+function buildSearchRequests(candidate: GoodsCandidate): TrademarkSearchRequest[] {
+  const requests: TrademarkSearchRequest[] = [];
+
+  // 1) 정확 상표명 검색 (항상 실행)
+  requests.push({
+    sourceSystem: "kipris",
+    mode: "exact_mark",
+    params: { markName: candidate.term, classNo: candidate.classNo },
+  });
+
+  // 2) 유사군 코드 검색 (코드가 있는 경우에만)
+  const simCode = getSimilarityCode(candidate);
+  if (simCode) {
+    requests.push({
+      sourceSystem: "kipris",
+      mode: "similarity_group",
+      params: { similarityGroupCode: simCode, classNo: candidate.classNo },
+    });
+  }
+
+  // 3) 지정상품 키워드 검색 (항상 실행 — normalizedTerm 우선)
+  const goodsKeyword = candidate.normalizedTerm?.trim() || candidate.term;
+  requests.push({
+    sourceSystem: "kipris",
+    mode: "designated_goods",
+    params: { goodsDescription: goodsKeyword, classNo: candidate.classNo },
+  });
+
+  return requests;
 }
 
 export class SearchExecuteWorkflow {
@@ -41,9 +89,8 @@ export class SearchExecuteWorkflow {
         state: "running",
       });
 
-      // Get candidates to search for
       // 선택된 후보 우선, 없으면 전체 후보 폴백 (isSelected 미설정 상태 대응)
-      let candidates: import("@ip-review/domain").GoodsCandidate[] = [];
+      let candidates: GoodsCandidate[] = [];
       if (searchJob.candidateRunId) {
         candidates = await this.repositories.candidates.findSelectedByRun(
           searchJob.candidateRunId
@@ -63,40 +110,54 @@ export class SearchExecuteWorkflow {
         );
       }
 
-      // Execute search for each candidate (최대 5개 — KIPRIS 할당량 절약)
+      // 최대 5개 후보 × 최대 3개 모드 = 최대 15 API 호출 (KIPRIS 월 1,000건 한도 내)
       const searchCandidates = candidates.slice(0, 5);
       const allResults: any[] = [];
-      for (const candidate of searchCandidates) {
-        const searchResults = await request.searchPort.search({
-          sourceSystem: "kipris",
-          mode: "exact_mark",
-          params: {
-            markName: candidate.term,
-            classNo: candidate.classNo,
-          },
-        });
 
-        // Store results
-        for (const result of searchResults) {
-          const storedResult = await prisma.searchResult.create({
-            data: {
-              searchJobId: searchJob.id,
-              sourceSystem: "kipris",
-              mode: "exact_mark",
-              markName: result.markName,
-              applicationNumber: result.applicationNumber,
-              registerNumber: result.registerNumber,
-              applicantName: result.applicantName,
-              classNo: result.classNo,
-              designatedGoodsSummary: result.designatedGoodsSummary,
-              statusLabel: result.statusLabel,
-              sampleImageUrl: result.sampleImageUrl,
-              relevanceScore: result.relevanceScore,
-              detailJson: result.rawResponse,
-              rawXml: result.rawXml,
-            },
-          });
-          allResults.push(storedResult);
+      // 중복 방지: searchJobId 내에서 동일 applicationNumber가 이미 저장된 경우 스킵
+      const storedAppNumbers = new Set<string>();
+
+      for (const candidate of searchCandidates) {
+        const searchRequests = buildSearchRequests(candidate);
+
+        for (const searchReq of searchRequests) {
+          let searchResults;
+          try {
+            searchResults = await request.searchPort.search(searchReq);
+          } catch (err) {
+            console.warn(
+              `[SearchExecuteWorkflow] 검색 실패 (mode=${searchReq.mode}, candidate=${candidate.term}):`,
+              err
+            );
+            continue; // 한 모드가 실패해도 나머지 모드는 계속 실행
+          }
+
+          for (const result of searchResults) {
+            // 같은 출원번호는 동일 Job 내에서 중복 저장하지 않음
+            const dedupKey = result.applicationNumber ?? `${result.markName}::${result.applicantName}`;
+            if (storedAppNumbers.has(dedupKey)) continue;
+            storedAppNumbers.add(dedupKey);
+
+            const storedResult = await prisma.searchResult.create({
+              data: {
+                searchJobId: searchJob.id,
+                sourceSystem: "kipris",
+                mode: searchReq.mode,
+                markName: result.markName,
+                applicationNumber: result.applicationNumber,
+                registerNumber: result.registerNumber,
+                applicantName: result.applicantName,
+                classNo: result.classNo,
+                designatedGoodsSummary: result.designatedGoodsSummary,
+                statusLabel: result.statusLabel,
+                sampleImageUrl: result.sampleImageUrl,
+                relevanceScore: result.relevanceScore,
+                detailJson: result.rawResponse,
+                rawXml: result.rawXml,
+              },
+            });
+            allResults.push(storedResult);
+          }
         }
       }
 
