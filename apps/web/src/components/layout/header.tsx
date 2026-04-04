@@ -80,31 +80,6 @@ const NAV_ITEMS: NavItem[] = [
           },
         ],
       },
-      {
-        id: 'status',
-        label: '진행 현황',
-        title: '단계별 진행 현황',
-        items: [
-          {
-            label: '정규화 완료',
-            desc: 'AI가 의뢰서를 구조화한 완료 건을 확인합니다',
-            href: '/inquiries?status=parsed',
-            badge: null,
-          },
-          {
-            label: '지정상품 준비',
-            desc: '상품 후보 생성이 완료된 접수 건입니다',
-            href: '/inquiries?status=candidate_ready',
-            badge: null,
-          },
-          {
-            label: '검색 완료',
-            desc: '유사상표 검색이 완료된 접수 건입니다',
-            href: '/inquiries?status=searched',
-            badge: null,
-          },
-        ],
-      },
     ],
     quickLink: { label: '전체 접수함 보기', href: '/inquiries' },
   },

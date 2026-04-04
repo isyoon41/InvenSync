@@ -6,6 +6,66 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import type { Inquiry, GoodsCandidate, SearchResult, ParsedInquiryData } from '@ip-review/domain';
 
+/* ── 진행 단계 스텝퍼 ─────────────────────────────────────────────── */
+const STEPS = [
+  { no: '01', label: '접수',       sub: '의뢰 등록',       icon: '📥', statuses: ['new'] },
+  { no: '02', label: '정규화',     sub: 'AI 상표명 추출',  icon: '🔄', statuses: ['parsed'] },
+  { no: '03', label: '지정상품',   sub: '류·유사군 추천',  icon: '🎯', statuses: ['candidate_ready'] },
+  { no: '04', label: '유사검색',   sub: 'KIPRIS 자동 검색', icon: '🔍', statuses: ['searched'] },
+  { no: '05', label: '검토 리포트', sub: '위험도 분석',     icon: '📋', statuses: ['reviewed', 'approved', 'exported'] },
+];
+
+const STATUS_STEP: Record<string, number> = {
+  new: 0, parsed: 1, candidate_ready: 2, searched: 3,
+  reviewed: 4, approved: 4, exported: 4,
+};
+
+function InquiryProgressStepper({ status }: { status: string }) {
+  const currentStep = STATUS_STEP[status] ?? 0;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl px-6 py-5 mb-6">
+      <div className="flex items-center justify-between relative">
+        {/* 연결선 */}
+        <div className="absolute left-0 right-0 top-[28px] h-px bg-slate-200 mx-[calc(100%/10)]" />
+
+        {STEPS.map((step, idx) => {
+          const done = idx < currentStep;
+          const active = idx === currentStep;
+          return (
+            <div key={step.no} className="flex flex-col items-center gap-2 relative z-10 flex-1">
+              {/* 원형 아이콘 */}
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-sm border-2 transition-all duration-300 ${
+                done
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : active
+                  ? 'bg-orange-500 border-orange-500 text-white'
+                  : 'bg-white border-slate-200 text-slate-300'
+              }`}>
+                {done ? '✓' : step.icon}
+              </div>
+              {/* 텍스트 */}
+              <div className="text-center">
+                <div className={`text-[11px] font-bold mb-0.5 ${
+                  active ? 'text-orange-500' : done ? 'text-blue-600' : 'text-slate-400'
+                }`}>
+                  {step.no}
+                </div>
+                <div className={`text-xs font-semibold ${
+                  active ? 'text-slate-900' : done ? 'text-slate-700' : 'text-slate-400'
+                }`}>
+                  {step.label}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5">{step.sub}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface PageProps {
   params: {
     id: string;
@@ -218,13 +278,15 @@ export default function InquiryDetailPage({ params }: PageProps) {
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex items-center gap-4">
+        <div className="mb-4 flex items-center gap-4">
           <Link href="/inquiries" className="text-blue-600 hover:text-blue-700">
             ← 접수함으로
           </Link>
           <span className="text-gray-600">/</span>
           <span className="text-gray-900">{inquiry.title}</span>
         </div>
+
+        <InquiryProgressStepper status={inquiry.status} />
 
         <InquiryDetail
           inquiry={inquiry}
