@@ -12,6 +12,66 @@ import { parseKiprisXml } from './kipris-xml-parser';
 
 const KIPRIS_BASE_URL = 'http://plus.kipris.or.kr/openapi/rest';
 
+// ── 문자열 유사도: Jaro-Winkler (0~1) ──────────────────────────────────────
+function jaroSimilarity(s1: string, s2: string): number {
+  if (s1 === s2) return 1;
+  const len1 = s1.length;
+  const len2 = s2.length;
+  if (len1 === 0 || len2 === 0) return 0;
+
+  const matchWindow = Math.floor(Math.max(len1, len2) / 2) - 1;
+  const s1Matches = new Array<boolean>(len1).fill(false);
+  const s2Matches = new Array<boolean>(len2).fill(false);
+
+  let matches = 0;
+  let transpositions = 0;
+
+  for (let i = 0; i < len1; i++) {
+    const start = Math.max(0, i - matchWindow);
+    const end = Math.min(i + matchWindow + 1, len2);
+    for (let j = start; j < end; j++) {
+      if (s2Matches[j] || s1[i] !== s2[j]) continue;
+      s1Matches[i] = true;
+      s2Matches[j] = true;
+      matches++;
+      break;
+    }
+  }
+
+  if (matches === 0) return 0;
+
+  let k = 0;
+  for (let i = 0; i < len1; i++) {
+    if (!s1Matches[i]) continue;
+    while (!s2Matches[k]) k++;
+    if (s1[i] !== s2[k]) transpositions++;
+    k++;
+  }
+
+  return (matches / len1 + matches / len2 + (matches - transpositions / 2) / matches) / 3;
+}
+
+function jaroWinkler(s1: string, s2: string): number {
+  const jaro = jaroSimilarity(s1, s2);
+  let prefix = 0;
+  for (let i = 0; i < Math.min(4, Math.min(s1.length, s2.length)); i++) {
+    if (s1[i] === s2[i]) prefix++;
+    else break;
+  }
+  return jaro + prefix * 0.1 * (1 - jaro);
+}
+
+/** 상표명 비교용 정규화: 소문자 + 공백·특수문자 제거 */
+function normalizeForCompare(name: string): string {
+  return name.toLowerCase().replace(/[\s\-_.,·]/g, '');
+}
+
+function computeRelevance(queryMark: string, resultMark: string): number {
+  const q = normalizeForCompare(queryMark);
+  const r = normalizeForCompare(resultMark);
+  return Math.round(jaroWinkler(q, r) * 100) / 100;
+}
+
 // 월 1,000건 무료 제한 대비 메모리 캐시 (프로세스 내)
 // 운영 환경에서는 Redis로 교체 권장
 const memoryCache = new Map<string, { data: TrademarkSearchResponse[]; expiresAt: number }>();
@@ -104,19 +164,24 @@ export class KiprisAdapter implements ITrademarkSearchPort {
       return [];
     }
 
-    return parsed.items.map((item) => ({
-      applicationNumber: item.applicationNumber || undefined,
-      registerNumber: item.registerNumber || undefined,
-      markName: item.trademarkName || markName,
-      applicantName: item.applicantName || undefined,
-      classNo: item.classificationCode ? parseInt(item.classificationCode, 10) : undefined,
-      designatedGoodsSummary: item.designatedGoods || undefined,
-      statusLabel: item.applicationStatus || undefined,
-      sampleImageUrl: item.drawing || undefined,
-      relevanceScore: undefined,
-      rawResponse: { ...item },
-      rawXml: xml,
-    }));
+    return parsed.items
+      .map((item) => {
+        const resultMark = item.trademarkName || markName;
+        return {
+          applicationNumber: item.applicationNumber || undefined,
+          registerNumber: item.registerNumber || undefined,
+          markName: resultMark,
+          applicantName: item.applicantName || undefined,
+          classNo: item.classificationCode ? parseInt(item.classificationCode, 10) : undefined,
+          designatedGoodsSummary: item.designatedGoods || undefined,
+          statusLabel: item.applicationStatus || undefined,
+          sampleImageUrl: item.drawing || undefined,
+          relevanceScore: computeRelevance(markName, resultMark),
+          rawResponse: { ...item },
+          rawXml: xml,
+        };
+      })
+      .sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
   }
 
   private async searchBySimilarityGroup(request: TrademarkSearchRequest): Promise<TrademarkSearchResponse[]> {
