@@ -1,7 +1,20 @@
+export interface ReviewEvidenceSearchResult {
+  id: string;
+  markName: string;
+  applicationNumber?: string;
+  registerNumber?: string;
+  applicantName?: string;
+  classNo?: number;
+  statusLabel?: string;
+  relevanceScore?: number;
+  designatedGoodsSummary?: string;
+}
+
 export interface ReviewEvidence {
   id: string;
   reviewReportId: string;
   searchResultId: string;
+  searchResult?: ReviewEvidenceSearchResult;
   note?: string;
   sortOrder: number;
   createdAt: Date;
