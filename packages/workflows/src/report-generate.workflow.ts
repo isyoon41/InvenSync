@@ -38,14 +38,6 @@ export class ReportGenerateWorkflow {
         request.searchJobId
       );
 
-      if (searchResults.length === 0) {
-        throw new InquiryProcessingError(
-          inquiry.id,
-          "report_generation",
-          "No search results found for generating report"
-        );
-      }
-
       // Generate report using LLM
       const generatedReport = await request.llmPort.generateReport({
         markName: inquiry.proposedMarkName || "Unknown Mark",

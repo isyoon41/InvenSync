@@ -67,17 +67,13 @@ export class MockTrademarkAdapter implements ITrademarkSearchPort {
 
     const { markName, classNo } = request.params;
 
-    return MOCK_RESULTS
-      .filter((r) => {
-        if (classNo !== undefined && r.classNo !== classNo) return false;
-        return true;
-      })
-      .map((r) => ({
-        ...r,
-        // 검색어와 결과명이 비슷할수록 높은 유사도
-        relevanceScore: markName
-          ? Math.min(0.99, (r.relevanceScore ?? 0.5) + Math.random() * 0.1)
-          : r.relevanceScore,
-      }));
+    return MOCK_RESULTS.map((r) => ({
+      ...r,
+      classNo: classNo ?? r.classNo,
+      // 검색어와 결과명이 비슷할수록 높은 유사도
+      relevanceScore: markName
+        ? Math.min(0.99, (r.relevanceScore ?? 0.5) + Math.random() * 0.1)
+        : r.relevanceScore,
+    }));
   }
 }
