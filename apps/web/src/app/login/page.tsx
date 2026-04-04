@@ -31,7 +31,8 @@ export default function LoginPage() {
         setError('이메일 또는 비밀번호가 올바르지 않습니다.');
       } else {
         router.refresh();
-        router.push('/inquiries');
+        const callbackUrl = searchParams.get('callbackUrl');
+        router.push(callbackUrl && callbackUrl.startsWith('/') ? callbackUrl : '/inquiries');
       }
     } catch {
       setError('로그인 중 오류가 발생했습니다. 다시 시도해 주세요.');

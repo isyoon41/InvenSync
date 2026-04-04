@@ -8,11 +8,11 @@ import { redirect } from 'next/navigation';
 export default async function NewInquiryPage() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.firmId) {
+  if (!session) {
     redirect('/login');
   }
 
-  const firmId = session.user.firmId;
+  const firmId = session.user.firmId ?? '';
 
   return (
     <>
