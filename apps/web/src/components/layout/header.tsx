@@ -49,6 +49,13 @@ interface NavItem {
   quickLink?: { label: string; href: string };
 }
 
+const ADMIN_NAV_ITEMS: NavItem[] = [
+  {
+    label: '회원 관리',
+    href: '/admin/users',
+  },
+];
+
 const NAV_ITEMS: NavItem[] = [
   {
     label: '접수함',
@@ -174,8 +181,8 @@ export interface HeaderProps {
 
 const roleLabels: Record<string, string> = {
   admin: '관리자',
-  reviewer: '검토자',
-  operator: '담당자',
+  reviewer: '부서장',
+  operator: '부서원',
 };
 
 /* ── Component ──────────────────────────────────────────────────── */
@@ -236,7 +243,7 @@ export function Header({ firmName, userName, userRole }: HeaderProps) {
             </Link>
 
             <nav className="hidden md:flex items-center gap-0.5">
-              {NAV_ITEMS.map((item) => {
+              {[...NAV_ITEMS, ...(userRole === 'admin' ? ADMIN_NAV_ITEMS : [])].map((item) => {
                 const active = isNavActive(item);
                 const isOpen = openMenu === item.label;
 

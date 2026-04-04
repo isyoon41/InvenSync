@@ -99,6 +99,7 @@
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
   .badge-gray    { @apply badge bg-slate-100 text-slate-600; }
+  .badge-slate   { @apply badge bg-slate-100 text-slate-600; }
   .badge-blue    { @apply badge bg-blue-100 text-blue-700; }
   .badge-purple  { @apply badge bg-purple-100 text-purple-700; }
   .badge-amber   { @apply badge bg-amber-100 text-amber-700; }

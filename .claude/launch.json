@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "invensync-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@ip-review/web", "dev"],
+      "port": 3000
+    }
+  ]
+}

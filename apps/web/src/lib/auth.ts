@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@ip-review/db';
+import bcrypt from 'bcryptjs';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -10,7 +11,6 @@ export const authOptions: NextAuthOptions = {
         email: {
           label: '이메일',
           type: 'email',
-          placeholder: 'yoon@example.com',
         },
         password: {
           label: '비밀번호',
@@ -18,11 +18,8 @@ export const authOptions: NextAuthOptions = {
         },
       },
       async authorize(credentials) {
-        if (!credentials?.email) return null;
+        if (!credentials?.email || !credentials?.password) return null;
 
-        // Lookup user by email
-        // NOTE: Password check is skipped for development
-        // In production, add bcrypt.compare(credentials.password, user.passwordHash)
         const user = await prisma.user.findFirst({
           where: {
             email: credentials.email,
@@ -34,6 +31,12 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user) return null;
+
+        // 비밀번호 검증: passwordHash가 없는 기존 계정은 거부
+        if (!user.passwordHash) return null;
+
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!isValid) return null;
 
         return {
           id: user.id,

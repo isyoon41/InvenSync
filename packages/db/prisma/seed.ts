@@ -13,6 +13,7 @@ import {
   SearchSourceSystem,
   UserRole,
 } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -33,7 +34,10 @@ async function ensureUser(args: {
   name: string;
   email: string;
   role: UserRole;
+  password?: string;
+  department?: string;
 }) {
+  const passwordHash = args.password ? await bcrypt.hash(args.password, 10) : undefined;
   return prisma.user.upsert({
     where: { email: args.email },
     update: {
@@ -41,6 +45,8 @@ async function ensureUser(args: {
       role: args.role,
       firmId: args.firmId,
       isActive: true,
+      ...(passwordHash ? { passwordHash } : {}),
+      ...(args.department !== undefined ? { department: args.department } : {}),
     },
     create: {
       firmId: args.firmId,
@@ -48,6 +54,8 @@ async function ensureUser(args: {
       email: args.email,
       role: args.role,
       isActive: true,
+      passwordHash: passwordHash ?? null,
+      department: args.department ?? null,
     },
   });
 }
@@ -628,11 +636,23 @@ async function seedSecondaryInquiry(args: {
 async function main() {
   const firm = await ensureFirm("IP Review Desk Demo Firm");
 
+  // 마스터 관리자 계정
+  await ensureUser({
+    firmId: firm.id,
+    name: "김관리자",
+    email: "yd.kim@invensync.kr",
+    role: UserRole.admin,
+    password: "123456",
+    department: "관리",
+  });
+
   const adminUser = await ensureUser({
     firmId: firm.id,
     name: "윤인식",
     email: "admin@ipreview.local",
     role: UserRole.admin,
+    password: "123456",
+    department: "관리",
   });
 
   // Production admin account
@@ -641,6 +661,8 @@ async function main() {
     name: "상표검토 관리자",
     email: "trademark.inbox26@gmail.com",
     role: UserRole.admin,
+    password: "123456",
+    department: "상표팀",
   });
 
   await ensureUser({
@@ -648,6 +670,8 @@ async function main() {
     name: "홍준 변리사",
     email: "reviewer@ipreview.local",
     role: UserRole.reviewer,
+    password: "123456",
+    department: "상표팀",
   });
 
   const inboxAccount = await ensureInboxAccount({

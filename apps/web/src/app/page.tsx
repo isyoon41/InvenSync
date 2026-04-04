@@ -26,9 +26,14 @@ export default async function HomePage() {
                 대시보드 →
               </Link>
             ) : (
-              <Link href="/login" className="btn-primary">
-                로그인
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/login" className="px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-150">
+                  로그인
+                </Link>
+                <Link href="/register" className="btn-primary">
+                  회원가입
+                </Link>
+              </div>
             )}
           </nav>
         </div>
