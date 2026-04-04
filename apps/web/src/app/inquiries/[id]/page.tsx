@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Header, InquiryDetail, CandidateReview, SearchResults, NormalizationPanel } from '@/components';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import type { Inquiry, GoodsCandidate, SearchResult, ParsedInquiryData } from '@ip-review/domain';
 
 /* ── 진행 단계 스텝퍼 ─────────────────────────────────────────────── */
 const STEPS = [
-  { no: '01', label: '접수',       sub: '의뢰 등록',       icon: '📥', statuses: ['new'] },
-  { no: '02', label: '정규화',     sub: 'AI 상표명 추출',  icon: '🔄', statuses: ['parsed'] },
-  { no: '03', label: '지정상품',   sub: '류·유사군 추천',  icon: '🎯', statuses: ['candidate_ready'] },
-  { no: '04', label: '유사검색',   sub: 'KIPRIS 자동 검색', icon: '🔍', statuses: ['searched'] },
-  { no: '05', label: '검토 리포트', sub: '위험도 분석',     icon: '📋', statuses: ['reviewed', 'approved', 'exported'] },
+  { no: '01', label: '접수',        sub: '의뢰 등록',        icon: '📥' },
+  { no: '02', label: '정규화',      sub: 'AI 상표명 추출',   icon: '🔄' },
+  { no: '03', label: '지정상품',    sub: '류·유사군 추천',   icon: '🎯' },
+  { no: '04', label: '유사검색',    sub: 'KIPRIS 자동 검색', icon: '🔍' },
+  { no: '05', label: '검토 리포트', sub: '위험도 분석',      icon: '📋' },
 ];
 
 const STATUS_STEP: Record<string, number> = {
@@ -20,7 +21,13 @@ const STATUS_STEP: Record<string, number> = {
   reviewed: 4, approved: 4, exported: 4,
 };
 
-function InquiryProgressStepper({ status }: { status: string }) {
+function InquiryProgressStepper({
+  status,
+  onStepClick,
+}: {
+  status: string;
+  onStepClick: (stepIdx: number) => void;
+}) {
   const currentStep = STATUS_STEP[status] ?? 0;
 
   return (
@@ -32,8 +39,16 @@ function InquiryProgressStepper({ status }: { status: string }) {
         {STEPS.map((step, idx) => {
           const done = idx < currentStep;
           const active = idx === currentStep;
+          const clickable = idx <= currentStep;
           return (
-            <div key={step.no} className="flex flex-col items-center gap-2 relative z-10 flex-1">
+            <button
+              key={step.no}
+              onClick={() => clickable && onStepClick(idx)}
+              disabled={!clickable}
+              className={`flex flex-col items-center gap-2 relative z-10 flex-1 bg-transparent border-none p-0 transition-opacity ${
+                clickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+              }`}
+            >
               {/* 원형 아이콘 */}
               <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-sm border-2 transition-all duration-300 ${
                 done
@@ -58,7 +73,7 @@ function InquiryProgressStepper({ status }: { status: string }) {
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">{step.sub}</div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -74,6 +89,7 @@ interface PageProps {
 
 export default function InquiryDetailPage({ params }: PageProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
   const [parsedData, setParsedData] = useState<ParsedInquiryData | null>(null);
   const [candidates, setCandidates] = useState<GoodsCandidate[]>([]);
@@ -86,6 +102,28 @@ export default function InquiryDetailPage({ params }: PageProps) {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportMessage, setReportMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'search'>('overview');
+
+  // 섹션 refs (스크롤 이동용)
+  const detailRef = useRef<HTMLDivElement>(null);
+  const normRef = useRef<HTMLDivElement>(null);
+  const tabRef = useRef<HTMLDivElement>(null);
+
+  // 스텝 클릭 → 해당 섹션으로 이동
+  const handleStepClick = useCallback((stepIdx: number) => {
+    if (stepIdx === 0) {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (stepIdx === 1) {
+      normRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (stepIdx === 2) {
+      setActiveTab('candidates');
+      tabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (stepIdx === 3) {
+      setActiveTab('search');
+      tabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (stepIdx === 4) {
+      router.push('/review');
+    }
+  }, [router]);
 
   useEffect(() => {
     const fetchInquiry = async () => {
@@ -148,6 +186,8 @@ export default function InquiryDetailPage({ params }: PageProps) {
       if (result.parsedData) {
         setParsedData(result.parsedData);
       }
+      // 정규화 완료 → 정규화 결과 섹션으로 이동
+      setTimeout(() => normRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
     } catch (error) {
       console.error('Failed to parse inquiry:', error);
       alert('정규화 처리 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
@@ -171,7 +211,9 @@ export default function InquiryDetailPage({ params }: PageProps) {
         const candidateRes = await fetch(`/api/candidates?candidateRunId=${result.candidateRunId}`);
         const candidateData = await candidateRes.json();
         setCandidates(candidateData.items || []);
+        // 지정상품 완료 → 후보 탭으로 이동
         setActiveTab('candidates');
+        setTimeout(() => tabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       }
     } catch (error) {
       console.error('Failed to process inquiry:', error);
@@ -191,9 +233,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
       });
       const result = await res.json();
       if (res.ok) {
-        setReportMessage('✓ 검토 리포트가 생성되었습니다');
+        setReportMessage('✓ 검토 리포트가 생성되었습니다. 검토 리포트 페이지로 이동합니다...');
         const updatedRes = await fetch(`/api/inquiries/${params.id}`);
         setInquiry(await updatedRes.json());
+        // 리포트 생성 완료 → 검토 리포트 페이지로 이동
+        setTimeout(() => router.push('/review'), 1500);
       } else {
         setReportMessage(`오류: ${result.error}`);
       }
@@ -224,7 +268,9 @@ export default function InquiryDetailPage({ params }: PageProps) {
         const resultsRes = await fetch(`/api/search-results?searchJobId=${result.searchJobId}`);
         const resultsData = await resultsRes.json();
         setResults(resultsData.items || []);
+        // 검색 완료 → 검색 결과 탭으로 이동
         setActiveTab('search');
+        setTimeout(() => tabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       } else {
         setSearchMessage(`오류: ${result.error}`);
       }
@@ -286,13 +332,15 @@ export default function InquiryDetailPage({ params }: PageProps) {
           <span className="text-gray-900">{inquiry.title}</span>
         </div>
 
-        <InquiryProgressStepper status={inquiry.status} />
+        <InquiryProgressStepper status={inquiry.status} onStepClick={handleStepClick} />
 
+        <div ref={detailRef}>
         <InquiryDetail
           inquiry={inquiry}
           onProcess={inquiry.status === 'new' ? handleParse : handleProcess}
           processing={inquiry.status === 'new' ? parsing : processing}
         />
+        </div>
 
         {/* 액션 버튼 영역 */}
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -340,7 +388,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
 
         {/* 정규화 결과 패널 */}
         {(inquiry.status !== 'new' || parsedData) && (
-          <div className="mt-8">
+          <div className="mt-8" ref={normRef}>
             <NormalizationPanel
               inquiryId={params.id}
               parsedData={parsedData || undefined}
@@ -351,7 +399,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
         )}
 
         {/* 탭 */}
-        <div className="mt-8 border-b border-gray-200">
+        <div className="mt-8 border-b border-gray-200" ref={tabRef}>
           <div className="flex gap-8">
             {[
               { id: 'overview' as const, label: '개요' },
