@@ -7,14 +7,10 @@ import { redirect } from 'next/navigation';
 
 async function getSearchedCount(firmId: string): Promise<number> {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/inquiries?firmId=${encodeURIComponent(firmId)}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return 0;
-    const data = await res.json();
-    const items: { status: string }[] = data.items || [];
-    return items.filter((i) =>
+    const { getRepositoryContainer } = await import('@ip-review/db');
+    const repositories = getRepositoryContainer();
+    const result = await repositories.inquiries.findByFirmId(firmId, { take: 500 });
+    return result.items.filter((i: { status: string }) =>
       ['searched', 'reviewed', 'approved', 'exported'].includes(i.status)
     ).length;
   } catch {

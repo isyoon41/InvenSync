@@ -4,18 +4,14 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { getRepositoryContainer } from '@ip-review/db';
 import type { Inquiry } from '@ip-review/domain';
 
 async function getInquiries(firmId: string): Promise<Inquiry[]> {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const response = await fetch(
-      `${baseUrl}/api/inquiries?firmId=${encodeURIComponent(firmId)}`,
-      { cache: 'no-store' }
-    );
-    if (!response.ok) return [];
-    const data = await response.json();
-    return data.items || [];
+    const repositories = getRepositoryContainer();
+    const result = await repositories.inquiries.findByFirmId(firmId, { take: 100 });
+    return result.items;
   } catch {
     return [];
   }

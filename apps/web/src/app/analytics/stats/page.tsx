@@ -4,16 +4,13 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
+import { getRepositoryContainer } from '@ip-review/db';
 
 async function getInquiries(firmId: string) {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/inquiries?firmId=${encodeURIComponent(firmId)}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.items || [];
+    const repositories = getRepositoryContainer();
+    const result = await repositories.inquiries.findByFirmId(firmId, { take: 500 });
+    return result.items;
   } catch {
     return [];
   }
@@ -21,14 +18,13 @@ async function getInquiries(firmId: string) {
 
 async function getReportSummary(firmId: string) {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    const [pendingRes, allRes] = await Promise.all([
-      fetch(`${baseUrl}/api/review-reports?firmId=${encodeURIComponent(firmId)}&pendingApproval=true`, { cache: 'no-store' }),
-      fetch(`${baseUrl}/api/review-reports?firmId=${encodeURIComponent(firmId)}&since=2024-01-01`, { cache: 'no-store' }),
+    const repositories = getRepositoryContainer();
+    const [pendingItems, allItems] = await Promise.all([
+      repositories.reviewReports.findPendingApproval(firmId),
+      repositories.reviewReports.findApprovedReports(firmId, new Date('2024-01-01'), { take: 500 }),
     ]);
-    const [pendingData, allData] = await Promise.all([pendingRes.json(), allRes.json()]);
-    const pending = (pendingData.items || []).length;
-    const approved = (allData.items || []).length;
+    const pending = pendingItems.length;
+    const approved = allItems.items?.length ?? (allItems as any).length ?? 0;
     return { total: pending + approved, pending, approved };
   } catch {
     return { total: 0, pending: 0, approved: 0 };
