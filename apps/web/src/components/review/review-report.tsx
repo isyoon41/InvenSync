@@ -22,18 +22,28 @@ function buildKiprisUrl(applicationNumber?: string, markName?: string): string {
 }
 
 /* ── Rich Text Renderer ──────────────────────────────────────── */
+function renderLines(para: string) {
+  const lines = para.split('\n');
+  return lines.map((line, i) => (
+    <React.Fragment key={i}>
+      {line}
+      {i < lines.length - 1 && <br />}
+    </React.Fragment>
+  ));
+}
+
 function RichText({ text }: { text: string }) {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
   if (paragraphs.length <= 1) {
     return (
-      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{text}</p>
+      <p className="text-sm text-slate-700 leading-relaxed">{renderLines(text)}</p>
     );
   }
   return (
     <div className="space-y-3">
       {paragraphs.map((para, i) => (
-        <p key={i} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-          {para}
+        <p key={i} className="text-sm text-slate-700 leading-relaxed">
+          {renderLines(para)}
         </p>
       ))}
     </div>
