@@ -16,28 +16,12 @@ export default async function HomePage() {
             <img src="/logo.png" alt="InvenSync" className="h-9 w-auto object-contain" />
           </Link>
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/inquiries" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-150">
-              접수함
-            </Link>
-            <Link href="/review" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-150">
-              검토 리포트
-            </Link>
             {session ? (
-              <div className="flex items-center gap-2">
-                <LogoutButton />
-                <Link href="/inquiries" className="btn-primary">
-                  대시보드 →
-                </Link>
-              </div>
+              <LogoutButton />
             ) : (
-              <div className="flex items-center gap-2">
-                <Link href="/login" className="px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-150">
-                  로그인
-                </Link>
-                <Link href="/register" className="btn-primary">
-                  회원가입
-                </Link>
-              </div>
+              <Link href="/login" className="px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors duration-150">
+                로그인
+              </Link>
             )}
           </nav>
         </div>

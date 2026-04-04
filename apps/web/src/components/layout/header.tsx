@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 
 /* ── Icons ─────────────────────────────────────────────────────── */
 const ChevronDown = ({ className = '' }: { className?: string }) => (
@@ -288,16 +289,15 @@ export function Header({ firmName, userName, userRole, userDepartment }: HeaderP
             </nav>
           </div>
 
-          {/* User Info */}
+          {/* User Info + Logout */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="hidden sm:block text-right">
-              <div className="text-sm font-semibold text-slate-800 leading-tight">{firmName}</div>
+              <div className="text-sm font-semibold text-slate-800 leading-tight">
+                {userDepartment || '부서 미지정'}
+              </div>
               {userName && (
                 <div className="text-xs text-slate-500 mt-0.5">
                   {userName}
-                  {userDepartment && (
-                    <span className="ml-1 text-slate-400">· {userDepartment}</span>
-                  )}
                   {roleLabel && (
                     <span className="ml-1 text-slate-400">· {roleLabel}</span>
                   )}
@@ -309,6 +309,12 @@ export function Header({ firmName, userName, userRole, userDepartment }: HeaderP
                 {userName?.charAt(0).toUpperCase() ?? 'U'}
               </span>
             </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-800 transition-colors duration-150"
+            >
+              로그아웃
+            </button>
           </div>
         </div>
       </div>
