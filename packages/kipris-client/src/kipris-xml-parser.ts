@@ -71,6 +71,35 @@ function extractItems(xml: string): string[] {
   return items;
 }
 
+// ── 유사상품 검색 응답 타입 ────────────────────────────────────────────────
+export interface KiprisSimilarGoodsItem {
+  goodsName: string;
+  similarCode: string;
+  classNo: string;
+}
+
+export interface KiprisSimilarGoodsResponse {
+  resultCode: string;
+  resultMsg: string;
+  totalCount: number;
+  items: KiprisSimilarGoodsItem[];
+}
+
+export function parseSimilarGoodsXml(xml: string): KiprisSimilarGoodsResponse {
+  const resultCode = extractTagValue(xml, 'resultCode');
+  const resultMsg  = extractTagValue(xml, 'resultMsg');
+  const totalCount = parseInt(extractTagValue(xml, 'totalCount') || '0', 10);
+
+  const rawItems = extractItems(xml);
+  const items: KiprisSimilarGoodsItem[] = rawItems.map((itemXml) => ({
+    goodsName:   extractTagValue(itemXml, 'goodsName'),
+    similarCode: extractTagValue(itemXml, 'similarCode'),
+    classNo:     extractTagValue(itemXml, 'classNo'),
+  }));
+
+  return { resultCode, resultMsg, totalCount, items };
+}
+
 export function parseKiprisXml(xml: string): KiprisSearchResponse {
   const resultCode = extractTagValue(xml, 'resultCode');
   const resultMsg = extractTagValue(xml, 'resultMsg');

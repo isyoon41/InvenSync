@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Header, InquiryDetail, CandidateReview, SearchResults, NormalizationPanel } from '@/components';
+import { Header, InquiryDetail, CandidateReview, SearchResults, NormalizationPanel, SimilarGoodsSearch } from '@/components';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -101,7 +101,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportMessage, setReportMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'search'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'candidates' | 'similar-goods' | 'search'>('overview');
 
   // 섹션 refs (스크롤 이동용)
   const detailRef = useRef<HTMLDivElement>(null);
@@ -404,6 +404,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
             {[
               { id: 'overview' as const, label: '개요' },
               { id: 'candidates' as const, label: '지정상품 후보', count: candidates.length },
+              { id: 'similar-goods' as const, label: '유사상품 검색' },
               { id: 'search' as const, label: '유사상표 검색 결과', count: results.length },
             ].map((tab) => (
               <button
@@ -435,6 +436,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
           )}
           {activeTab === 'candidates' && (
             <CandidateReview candidates={candidates} />
+          )}
+          {activeTab === 'similar-goods' && (
+            <SimilarGoodsSearch
+              initialQuery={candidates[0]?.term ?? inquiry.proposedMarkName ?? ''}
+            />
           )}
           {activeTab === 'search' && <SearchResults results={results} />}
         </div>

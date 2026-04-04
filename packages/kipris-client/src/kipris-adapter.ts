@@ -8,7 +8,10 @@ import type {
   TrademarkSearchRequest,
   TrademarkSearchResponse,
 } from '@ip-review/domain';
-import { parseKiprisXml } from './kipris-xml-parser';
+import { parseKiprisXml, parseSimilarGoodsXml } from './kipris-xml-parser';
+import type { KiprisSimilarGoodsItem } from './kipris-xml-parser';
+
+export type { KiprisSimilarGoodsItem };
 
 const KIPRIS_BASE_URL = 'http://plus.kipris.or.kr/openapi/rest';
 
@@ -254,6 +257,46 @@ export class KiprisAdapter implements ITrademarkSearchPort {
       rawResponse: { ...item },
       rawXml: xml,
     }));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // 유사상품 검색: 상품명 → 유사군코드 + 동일 유사군 상품 목록
+  // ─────────────────────────────────────────────────────────────────────────
+  async searchSimilarGoods(
+    query: string,
+    classNo?: number
+  ): Promise<KiprisSimilarGoodsItem[]> {
+    const cacheKey = `similar-goods:${query}:${classNo ?? ''}`;
+    const cached = memoryCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.data as unknown as KiprisSimilarGoodsItem[];
+    }
+
+    const params: Record<string, string> = {
+      query,
+      pageNo: '1',
+      numOfRows: '50',
+      accessKey: this.accessKey,
+    };
+    if (classNo !== undefined) {
+      params.classNo = String(classNo).padStart(2, '0');
+    }
+
+    const url = buildSearchUrl('goodsSimilarCodeService/goodsSimilarCodeSearch', params);
+    const xml = await this.fetchXml(url);
+    if (!xml) return [];
+
+    const parsed = parseSimilarGoodsXml(xml);
+    if (parsed.resultCode !== '00') {
+      console.warn(`[KiprisAdapter] 유사상품 API 오류: ${parsed.resultCode} - ${parsed.resultMsg}`);
+      return [];
+    }
+
+    memoryCache.set(cacheKey, {
+      data: parsed.items as unknown as TrademarkSearchResponse[],
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
+    return parsed.items;
   }
 
   private async fetchXml(url: string): Promise<string | null> {

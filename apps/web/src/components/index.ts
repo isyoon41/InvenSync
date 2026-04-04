@@ -21,6 +21,8 @@ export type { CandidateReviewProps } from './candidates/candidate-review';
 export { SearchResults } from './search/search-results';
 export type { SearchResultsProps } from './search/search-results';
 
+export { SimilarGoodsSearch } from './search/similar-goods-search';
+
 // Review
 export { ReviewReport } from './review/review-report';
 export type { ReviewReportProps } from './review/review-report';
