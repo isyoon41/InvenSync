@@ -23,9 +23,9 @@ async function getSearchedCount(firmId: string): Promise<number> {
 }
 
 const SEARCH_MODES = [
-  { mode: 'exact_mark',         label: '?�확 ?�표�?검??,   desc: '?�표�??�전 ?�치 검??(기본)' },
-  { mode: 'similarity_group',   label: '?�사�?코드 검??,   desc: '?�사�?코드 기반 관???�표 검?? },
-  { mode: 'designated_goods',   label: '지?�상???�워??검??, desc: '?�품�??�워?�로 ?�사 ?�표 검?? },
+  { mode: 'exact_mark',         label: '정확 상표명 검색',   desc: '상표명 완전 일치 검색 (기본)' },
+  { mode: 'similarity_group',   label: '유사군 코드 검색',   desc: '유사군 코드 기반 관련 상표 검색' },
+  { mode: 'designated_goods',   label: '지정상품 키워드 검색', desc: '상품명 키워드로 유사 상표 검색' },
 ];
 
 export default async function KiprisPage() {
@@ -40,7 +40,7 @@ export default async function KiprisPage() {
     <>
       <Header
         firmName={session.user.firmName || session.user.firmId}
-        userName={session.user.name || '?�용??}
+        userName={session.user.name || '사용자'}
         userRole={session.user.role || 'operator'}
         userDepartment={session.user.department || undefined}
       />
@@ -50,19 +50,19 @@ export default async function KiprisPage() {
         <div className="page-header">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Link href="/analytics/stats" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">?�계</Link>
+              <Link href="/analytics/stats" className="text-xs text-slate-400 hover:text-slate-600 transition-colors">통계</Link>
               <span className="text-slate-300">/</span>
-              <span className="text-xs font-semibold text-blue-600">KIPRIS ?�용 ?�황</span>
+              <span className="text-xs font-semibold text-blue-600">KIPRIS 사용 현황</span>
             </div>
-            <h1 className="page-title">KIPRIS ?�용 ?�황</h1>
-            <p className="page-description">KIPRIS Open API ?�용?�과 ?�동 ?�태�??�인?�니??/p>
+            <h1 className="page-title">KIPRIS 사용 현황</h1>
+            <p className="page-description">KIPRIS Open API 사용량과 연동 상태를 확인합니다</p>
           </div>
           <Link href="/analytics/stats" className="btn-secondary text-sm">
-            ??처리 ?�계
+            ← 처리 통계
           </Link>
         </div>
 
-        {/* ?�동 ?�태 배너 */}
+        {/* 연동 상태 배너 */}
         <div className={`rounded-xl border p-5 mb-8 flex items-start gap-4 ${
           isLive
             ? 'bg-emerald-50 border-emerald-200'
@@ -83,24 +83,24 @@ export default async function KiprisPage() {
           </div>
           <div>
             <div className={`text-sm font-bold mb-1 ${isLive ? 'text-emerald-800' : 'text-amber-800'}`}>
-              {isLive ? 'KIPRIS ?�제 ?�동 �? : 'Mock 모드 (개발 ?�경)'}
+              {isLive ? 'KIPRIS 실제 연동 중' : 'Mock 모드 (개발 환경)'}
             </div>
             <p className={`text-xs leading-relaxed ${isLive ? 'text-emerald-700' : 'text-amber-700'}`}>
               {isLive
-                ? 'TRADEMARK_PROVIDER_MODE=kipris ???�제 KIPRIS Open API???�결?�어 ?�습?�다. ??1,000�?무료 ?�도 ?�에???�용 중입?�다.'
-                : 'TRADEMARK_PROVIDER_MODE=mock ??개발??Mock ?�이?��? ?�용 중입?�다. ?�제 API ?�출??발생?��? ?�습?�다.'}
+                ? 'TRADEMARK_PROVIDER_MODE=kipris — 실제 KIPRIS Open API에 연결되어 있습니다. 월 1,000건 무료 한도 내에서 사용 중입니다.'
+                : 'TRADEMARK_PROVIDER_MODE=mock — 개발용 Mock 데이터를 사용 중입니다. 실제 API 호출이 발생하지 않습니다.'}
             </p>
           </div>
         </div>
 
-        {/* ?�용??카드 */}
+        {/* 사용량 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {[
             {
-              label: '??무료 ?�도',
-              value: '1,000�?,
+              label: '월 무료 한도',
+              value: '1,000건',
               accent: 'bg-slate-400',
-              desc: 'KIPRIS Open API 기�?',
+              desc: 'KIPRIS Open API 기준',
               icon: (
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#64748b" strokeWidth="1.5">
                   <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zM10 6v4l3 2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -108,10 +108,10 @@ export default async function KiprisPage() {
               ),
             },
             {
-              label: '24?�간 캐시',
-              value: '?�용 �?,
+              label: '24시간 캐시',
+              value: '적용 중',
               accent: 'bg-blue-500',
-              desc: '?�일 검?�어 중복 ?�출 차단',
+              desc: '동일 검색어 중복 호출 차단',
               icon: (
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#2563eb" strokeWidth="1.5">
                   <path d="M4 4h12v4l-6 4-6-4V4zM4 12v4h12v-4" strokeLinecap="round" strokeLinejoin="round"/>
@@ -119,10 +119,10 @@ export default async function KiprisPage() {
               ),
             },
             {
-              label: '검???�료 건수',
-              value: `${searchedCount}�?,
+              label: '검색 완료 건수',
+              value: `${searchedCount}건`,
               accent: 'bg-amber-400',
-              desc: '?�제 API ?�출 추정 건수',
+              desc: '실제 API 호출 추정 건수',
               icon: (
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#d97706" strokeWidth="1.5">
                   <circle cx="9" cy="9" r="6"/><path d="M15 15l3 3" strokeLinecap="round"/>
@@ -144,9 +144,9 @@ export default async function KiprisPage() {
           ))}
         </div>
 
-        {/* 검??모드 ?�내 */}
+        {/* 검색 모드 안내 */}
         <div className="card p-6 mb-6">
-          <h3 className="text-sm font-bold text-slate-700 mb-5">지??검??모드</h3>
+          <h3 className="text-sm font-bold text-slate-700 mb-5">지원 검색 모드</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {SEARCH_MODES.map((mode) => (
               <div
@@ -169,15 +169,15 @@ export default async function KiprisPage() {
           </div>
         </div>
 
-        {/* 캐시 �?API ?�책 */}
+        {/* 캐시 및 API 정책 */}
         <div className="card p-6">
-          <h3 className="text-sm font-bold text-slate-700 mb-4">API ?�용 ?�책 ?�내</h3>
+          <h3 className="text-sm font-bold text-slate-700 mb-4">API 사용 정책 안내</h3>
           <div className="space-y-3">
             {[
-              { icon: '?��', title: '24?�간 ?�메모리 캐시',  desc: '?�일 검?�어·조건??결과�?24?�간 ?�안 캐시?�여 KIPRIS API 중복 ?�출??방�??�니??' },
-              { icon: '?��', title: '?�보 ???�한',           desc: '?�뢰 1건당 최�? 5�?지?�상???�보???�??검?�을 ?�행?�여 ???�용?�을 보호?�니??' },
-              { icon: '?��', title: 'API ??관�?,            desc: 'KIPRIS_API_KEY??Vercel ?�경변?�에 ?�전?�게 ?�?�되???�습?�다. ?�는 ?�버?�서�??�용?�니??' },
-              { icon: '??, title: '?�당??초과 ???�작',    desc: '??1,000�??�도 초과 ??캐시??결과�??�선 반환?�며, ?�규 검?��? Mock ?�이?�로 ?�체됩?�다.' },
+              { icon: '🔒', title: '24시간 인메모리 캐시',  desc: '동일 검색어·조건의 결과를 24시간 동안 캐시하여 KIPRIS API 중복 호출을 방지합니다.' },
+              { icon: '📦', title: '후보 수 제한',           desc: '의뢰 1건당 최대 5개 지정상품 후보에 대해 검색을 실행하여 월 사용량을 보호합니다.' },
+              { icon: '🔑', title: 'API 키 관리',            desc: 'KIPRIS_API_KEY는 Vercel 환경변수에 안전하게 저장되어 있습니다. 키는 서버에서만 사용됩니다.' },
+              { icon: '⚡', title: '할당량 초과 시 동작',    desc: '월 1,000건 한도 초과 시 캐시된 결과를 우선 반환하며, 신규 검색은 Mock 데이터로 대체됩니다.' },
             ].map((item) => (
               <div key={item.title} className="flex items-start gap-3 py-3 border-b border-slate-50 last:border-0">
                 <span className="text-lg flex-shrink-0 mt-0.5">{item.icon}</span>

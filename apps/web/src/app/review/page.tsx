@@ -7,18 +7,18 @@ import { useSession } from 'next-auth/react';
 import type { ReviewReport } from '@ip-review/domain';
 
 const RISK_CONFIG: Record<string, { label: string; className: string }> = {
-  high:    { label: '?�험',   className: 'badge-red' },
+  high:    { label: '위험',   className: 'badge-red' },
   medium:  { label: '주의',   className: 'badge-amber' },
-  low:     { label: '?�전',   className: 'badge-green' },
-  unknown: { label: '미확??, className: 'badge-gray' },
+  low:     { label: '안전',   className: 'badge-green' },
+  unknown: { label: '미확인', className: 'badge-gray' },
 };
 
 function detectRiskLevel(riskNote?: string | null): string {
   if (!riskNote) return 'unknown';
   const n = riskNote.toLowerCase();
-  if (n.includes('high') || n.includes('?�음')) return 'high';
+  if (n.includes('high') || n.includes('높음')) return 'high';
   if (n.includes('medium') || n.includes('중간')) return 'medium';
-  if (n.includes('low') || n.includes('??��')) return 'low';
+  if (n.includes('low') || n.includes('낮음')) return 'low';
   return 'unknown';
 }
 
@@ -61,8 +61,8 @@ export default function ReviewPage() {
   return (
     <>
       <Header
-        firmName={session?.user?.firmName || session?.user?.firmId || ""}
-        userName={session?.user?.name || '?�용??}
+        firmName={session?.user?.firmId || 'IP Review Desk'}
+        userName={session?.user?.name || '사용자'}
         userRole={session?.user?.role || 'reviewer'}
         userDepartment={session?.user?.department || undefined}
       />
@@ -71,8 +71,8 @@ export default function ReviewPage() {
         {/* Page Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">검??리포??/h1>
-            <p className="page-description">AI 분석 리포?��? 검?�하�?고객 ?�신???�인?�니??/p>
+            <h1 className="page-title">검토 리포트</h1>
+            <p className="page-description">AI 분석 리포트를 검토하고 고객 회신을 승인합니다</p>
           </div>
         </div>
 
@@ -80,20 +80,20 @@ export default function ReviewPage() {
         <div className="grid grid-cols-3 gap-4 mb-8">
           <div className="stat-card">
             <div className="stat-card-value text-amber-600">{pendingReports.length}</div>
-            <div className="stat-card-label">?�인 ?��?/div>
-            <div className="text-xs text-slate-400 mt-0.5">검?��? ?�요??리포??/div>
+            <div className="stat-card-label">승인 대기</div>
+            <div className="text-xs text-slate-400 mt-0.5">검토가 필요한 리포트</div>
             <div className="stat-card-accent bg-amber-400" />
           </div>
           <div className="stat-card">
             <div className="stat-card-value text-emerald-600">{approvedReports.length}</div>
-            <div className="stat-card-label">?�인 ?�료</div>
-            <div className="text-xs text-slate-400 mt-0.5">처리 ?�료??리포??/div>
+            <div className="stat-card-label">승인 완료</div>
+            <div className="text-xs text-slate-400 mt-0.5">처리 완료된 리포트</div>
             <div className="stat-card-accent bg-emerald-500" />
           </div>
           <div className="stat-card">
             <div className="stat-card-value text-blue-600">{totalCount}</div>
-            <div className="stat-card-label">?�체 리포??/div>
-            <div className="text-xs text-slate-400 mt-0.5">?�적 검??리포????/div>
+            <div className="stat-card-label">전체 리포트</div>
+            <div className="text-xs text-slate-400 mt-0.5">누적 검토 리포트 수</div>
             <div className="stat-card-accent bg-blue-500" />
           </div>
         </div>
@@ -101,8 +101,8 @@ export default function ReviewPage() {
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-6">
           {([
-            { key: 'pending',  label: '?�인 ?��?, count: pendingReports.length },
-            { key: 'approved', label: '?�인 ?�료', count: approvedReports.length },
+            { key: 'pending',  label: '승인 대기', count: pendingReports.length },
+            { key: 'approved', label: '승인 완료', count: approvedReports.length },
           ] as const).map((f) => (
             <button
               key={f.key}
@@ -131,7 +131,7 @@ export default function ReviewPage() {
                 <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
                 </svg>
-                불러?�는 �?..
+                불러오는 중...
               </div>
             </div>
           ) : displayReports.length === 0 ? (
@@ -142,7 +142,7 @@ export default function ReviewPage() {
                 </svg>
               </div>
               <p className="text-sm font-medium text-slate-600">
-                {filter === 'pending' ? '?�인 ?��?중인' : '?�인 ?�료??} 리포?��? ?�습?�다
+                {filter === 'pending' ? '승인 대기 중인' : '승인 완료된'} 리포트가 없습니다
               </p>
             </div>
           ) : (
@@ -150,11 +150,11 @@ export default function ReviewPage() {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
-                    <th className="table-header-cell">?�표�?/th>
-                    <th className="table-header-cell">?�험??/th>
-                    <th className="table-header-cell">?�태</th>
-                    <th className="table-header-cell">?�록??/th>
-                    <th className="table-header-cell">?�업</th>
+                    <th className="table-header-cell">상표명</th>
+                    <th className="table-header-cell">위험도</th>
+                    <th className="table-header-cell">상태</th>
+                    <th className="table-header-cell">등록일</th>
+                    <th className="table-header-cell">작업</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,7 +166,7 @@ export default function ReviewPage() {
                         <td className="table-cell">
                           <div className="text-sm font-semibold text-slate-900">
                             {(report as any).inquiry?.proposedMarkName || (
-                              <span className="text-slate-400 font-normal">?�표�?미설??/span>
+                              <span className="text-slate-400 font-normal">상표명 미설정</span>
                             )}
                           </div>
                           {(report as any).inquiry?.title && (
@@ -180,7 +180,7 @@ export default function ReviewPage() {
                         </td>
                         <td className="table-cell">
                           <span className={report.approvedAt ? 'badge-emerald' : 'badge-amber'}>
-                            {report.approvedAt ? '?�인 ?�료' : '?�인 ?��?}
+                            {report.approvedAt ? '승인 완료' : '승인 대기'}
                           </span>
                         </td>
                         <td className="table-cell">
@@ -193,7 +193,8 @@ export default function ReviewPage() {
                             href={`/review/${report.id}`}
                             className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors duration-150"
                           >
-                            보기 ??                          </Link>
+                            보기 →
+                          </Link>
                         </td>
                       </tr>
                     );
