@@ -272,7 +272,15 @@ ${similarList || '검색 결과 없음 — 충돌 상표 없음'}
     const text = result.response.text();
 
     try {
-      return JSON.parse(text) as GeneratedReport;
+      const parsed = JSON.parse(text) as GeneratedReport;
+      // Gemini가 JSON 내 개행을 리터럴 \n 으로 출력하는 경우 정규화
+      const norm = (s: string) => (s || '').replace(/\\n/g, '\n');
+      return {
+        summary: norm(parsed.summary),
+        riskNote: norm(parsed.riskNote),
+        recommendation: norm(parsed.recommendation),
+        clientReplyDraft: norm(parsed.clientReplyDraft),
+      };
     } catch {
       return {
         summary: '리포트 생성 중 오류가 발생했습니다. 수동으로 작성해 주세요.',

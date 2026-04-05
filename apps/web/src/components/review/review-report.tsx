@@ -25,6 +25,12 @@ function buildKiprisUrl(applicationNumber?: string, markName?: string): string {
 }
 
 /* ── Rich Text Renderer ──────────────────────────────────────── */
+
+/** LLM이 JSON에 리터럴 \n 을 출력하는 경우를 실제 개행으로 정규화 */
+function normalizeNewlines(text: string): string {
+  return text.replace(/\\n/g, '\n');
+}
+
 function renderLines(para: string) {
   const lines = para.split('\n');
   return lines.map((line, i) => (
@@ -36,10 +42,11 @@ function renderLines(para: string) {
 }
 
 function RichText({ text }: { text: string }) {
-  const paragraphs = text.split(/\n\n+/).filter(Boolean);
+  const normalized = normalizeNewlines(text);
+  const paragraphs = normalized.split(/\n\n+/).filter(Boolean);
   if (paragraphs.length <= 1) {
     return (
-      <p className="text-sm text-slate-700 leading-relaxed">{renderLines(text)}</p>
+      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{normalized}</p>
     );
   }
   return (
@@ -110,12 +117,21 @@ export function ReviewReport({
 }: ReviewReportProps) {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({
-    summary: report.summary || '',
-    riskNote: report.riskNote || '',
-    recommendation: report.recommendation || '',
-    clientReplyDraft: report.clientReplyDraft || '',
-    internalNote: report.internalNote || '',
+    summary: normalizeNewlines(report.summary || ''),
+    riskNote: normalizeNewlines(report.riskNote || ''),
+    recommendation: normalizeNewlines(report.recommendation || ''),
+    clientReplyDraft: normalizeNewlines(report.clientReplyDraft || ''),
+    internalNote: normalizeNewlines(report.internalNote || ''),
   });
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyDraft = () => {
+    const text = normalizeNewlines(report.clientReplyDraft || '');
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handleSave = () => {
     onSave?.(formData);
@@ -257,23 +273,41 @@ export function ReviewReport({
       </SectionCard>
 
       {/* 고객 회신 초안 */}
-      <SectionCard icon="✉️" title="고객 회신 초안" accentColor="text-violet-700" headerBg="bg-violet-50">
-        {editMode ? (
-          <textarea
-            value={formData.clientReplyDraft}
-            onChange={(e) => setFormData({ ...formData, clientReplyDraft: e.target.value })}
-            className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
-            rows={6}
-            placeholder="고객 회신 초안을 입력하세요..."
-          />
-        ) : report.clientReplyDraft ? (
-          <div className="bg-slate-50 rounded-lg border border-slate-100 px-4 py-4">
-            <RichText text={report.clientReplyDraft} />
-          </div>
-        ) : (
-          <p className="text-sm text-slate-400 italic">회신 초안 없음</p>
-        )}
-      </SectionCard>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}>
+        <div className="px-5 py-3.5 flex items-center gap-2.5 bg-violet-50 border-b border-slate-100">
+          <span className="text-base">✉️</span>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700">고객 회신 초안</h2>
+          {!editMode && report.clientReplyDraft && (
+            <button
+              onClick={handleCopyDraft}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md border border-violet-200 bg-white text-violet-700 hover:bg-violet-50 transition-colors"
+            >
+              {copied ? (
+                <><span>✓</span> 복사됨</>
+              ) : (
+                <><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="4" y="4" width="7" height="7" rx="1"/><path d="M1 8V1h7"/></svg> 복사</>
+              )}
+            </button>
+          )}
+        </div>
+        <div className="px-5 py-4">
+          {editMode ? (
+            <textarea
+              value={formData.clientReplyDraft}
+              onChange={(e) => setFormData({ ...formData, clientReplyDraft: e.target.value })}
+              className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none font-mono"
+              rows={14}
+              placeholder="고객 회신 초안을 입력하세요..."
+            />
+          ) : report.clientReplyDraft ? (
+            <div className="bg-slate-50 rounded-lg border border-slate-100 px-4 py-4">
+              <RichText text={report.clientReplyDraft} />
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 italic">회신 초안 없음</p>
+          )}
+        </div>
+      </div>
 
       {/* 내부 메모 */}
       <SectionCard icon="🔒" title="내부 메모" accentColor="text-slate-600" headerBg="bg-slate-50">
