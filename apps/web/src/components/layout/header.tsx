@@ -59,29 +59,54 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
 
 const NAV_ITEMS: NavItem[] = [
   {
-    label: '접수함',
+    label: '워크플로우',
     categories: [
       {
-        id: 'reception',
-        label: '의뢰 접수',
-        title: '의뢰 접수 관리',
+        id: 'active-work',
+        label: '진행 작업',
+        title: '상표 검토 워크플로우',
         items: [
           {
             label: '새 의뢰 등록',
-            desc: '신규 고객 상표 검토 의뢰를 등록합니다',
+            desc: '고객 요청을 접수하고 정규화부터 시작합니다',
             href: '/inquiries/new',
-            badge: 'NEW',
+            badge: 'START',
           },
           {
-            label: '전체 접수 목록',
-            desc: '접수된 모든 상표 검토 의뢰를 확인합니다',
+            label: '진행 중 의뢰',
+            desc: '정규화, 지정상품, 유사검색, 의견서 생성을 이어갑니다',
             href: '/inquiries',
+            badge: null,
+          },
+          {
+            label: '검토 의견서 확인',
+            desc: '생성된 상표 출원 검토 의견서와 회신 초안을 확인합니다',
+            href: '/review',
+            badge: null,
+          },
+        ],
+      },
+      {
+        id: 'evidence',
+        label: 'KIPRIS 근거',
+        title: 'KIPRIS 근거 확인',
+        items: [
+          {
+            label: 'KIPRIS 사용 현황',
+            desc: '상표 출원 속보, 유사상품군, 검색 API 사용 흐름을 확인합니다',
+            href: '/analytics/kipris',
+            badge: null,
+          },
+          {
+            label: '처리 통계',
+            desc: '접수부터 답변서까지 단계별 처리 현황을 확인합니다',
+            href: '/analytics/stats',
             badge: null,
           },
         ],
       },
     ],
-    quickLink: { label: '전체 접수함 보기', href: '/inquiries' },
+    quickLink: { label: '진행 중 의뢰 보기', href: '/inquiries' },
   },
   {
     label: '답변서 작성',
