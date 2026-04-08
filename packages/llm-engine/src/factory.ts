@@ -5,6 +5,7 @@
 
 import type { ILLMPort } from '@ip-review/domain';
 import { AnthropicLLMAdapter } from './anthropic-adapter';
+import { FallbackLLMAdapter } from './fallback-adapter';
 import { GeminiLLMAdapter } from './gemini-adapter';
 import { MockLLMAdapter } from './mock-adapter';
 
@@ -21,7 +22,11 @@ export function createLLMPort(mode?: LLMProviderMode | string): ILLMPort {
         console.warn('[LLMFactory] ANTHROPIC_API_KEY 없음 → mock으로 폴백');
         return new MockLLMAdapter();
       }
-      return new AnthropicLLMAdapter(apiKey);
+      const primary = new AnthropicLLMAdapter(apiKey);
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) return primary;
+
+      return new FallbackLLMAdapter(primary, new GeminiLLMAdapter(geminiApiKey), 'Gemini');
     }
     case 'gemini': {
       const apiKey = process.env.GEMINI_API_KEY;
