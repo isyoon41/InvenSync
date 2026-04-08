@@ -5,7 +5,6 @@
 
 import type { ILLMPort } from '@ip-review/domain';
 import { AnthropicLLMAdapter } from './anthropic-adapter';
-import { FallbackLLMAdapter } from './fallback-adapter';
 import { GeminiLLMAdapter } from './gemini-adapter';
 import { MockLLMAdapter } from './mock-adapter';
 
@@ -14,27 +13,22 @@ export type LLMProviderMode = 'mock' | 'gemini' | 'claude' | 'anthropic';
 export function createClaudeOnlyLLMPort(): ILLMPort {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is required for Claude-only report generation');
+    throw new Error('ANTHROPIC_API_KEY is required for Claude-only LLM processing');
   }
   return new AnthropicLLMAdapter(apiKey);
 }
 
 export function createLLMPort(mode?: LLMProviderMode | string): ILLMPort {
-  const resolvedMode = mode ?? process.env.LLM_PROVIDER_MODE ?? 'mock';
+  const resolvedMode = mode ?? process.env.LLM_PROVIDER_MODE ?? 'claude';
 
   switch (resolvedMode) {
     case 'claude':
     case 'anthropic': {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
-        console.warn('[LLMFactory] ANTHROPIC_API_KEY 없음 → mock으로 폴백');
-        return new MockLLMAdapter();
+        throw new Error('ANTHROPIC_API_KEY is required for Claude LLM processing');
       }
-      const primary = new AnthropicLLMAdapter(apiKey);
-      const geminiApiKey = process.env.GEMINI_API_KEY;
-      if (!geminiApiKey) return primary;
-
-      return new FallbackLLMAdapter(primary, new GeminiLLMAdapter(geminiApiKey), 'Gemini');
+      return new AnthropicLLMAdapter(apiKey);
     }
     case 'gemini': {
       const apiKey = process.env.GEMINI_API_KEY;

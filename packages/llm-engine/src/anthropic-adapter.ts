@@ -148,6 +148,16 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function asCandidateSourceType(value: unknown): GeneratedCandidate['sourceType'] {
+  return value === 'official_notice_name' ||
+    value === 'accepted_similar_name' ||
+    value === 'ai_generated' ||
+    value === 'manual' ||
+    value === 'competitor_reference'
+    ? value
+    : 'ai_generated';
+}
+
 function isSupportedImageMimeType(mimeType: string): mimeType is AnthropicImageBlock['source']['media_type'] {
   return mimeType === 'image/jpeg' || mimeType === 'image/png' || mimeType === 'image/gif' || mimeType === 'image/webp';
 }
@@ -228,6 +238,20 @@ function topCandidateGoods(request: ReportGenerationRequest) {
   }));
 }
 
+function candidateReferenceGoods(request: CandidateGenerationRequest) {
+  return (request.referenceGoods ?? []).slice(0, 30).map((candidate, index) => ({
+    index: index + 1,
+    term: candidate.term,
+    normalizedTerm: candidate.normalizedTerm,
+    classNo: candidate.classNo,
+    sourceType: candidate.sourceType,
+    confidence: candidate.confidence,
+    similarityGroupCodes: candidate.similarityGroupCodes ?? [],
+    rationale: candidate.rationale,
+    query: candidate.query ?? '',
+  }));
+}
+
 export class AnthropicLLMAdapter implements ILLMPort {
   constructor(
     private readonly apiKey: string,
@@ -289,6 +313,7 @@ ${request.senderEmail ?? '미기재'}`,
       `당신은 한국 상표 지정상품 설계를 수행하는 변리사입니다.
 
 KIPRIS/NICE 분류 검색에 투입할 수 있도록 지정상품 및 지정서비스업 후보를 설계하세요. 반드시 JSON 객체만 출력하세요.
+KIPRIS 유사상품군 근거를 최우선으로 검토하고, 내부 DB 근거는 보조 참고자료로만 사용하세요. 최종 후보 선정 판단은 반드시 Claude가 수행합니다. KIPRIS/내부 DB 근거가 부족할 때만 AI 보완 후보를 추가하세요.
 
 출력 형식:
 {
@@ -299,7 +324,8 @@ KIPRIS/NICE 분류 검색에 투입할 수 있도록 지정상품 및 지정서�
       "classNo": 9,
       "sourceType": "ai_generated",
       "confidence": 0.0,
-      "rationale": "추천 이유와 권리화 의도"
+      "rationale": "추천 이유와 권리화 의도",
+      "similarityGroupCodes": ["G390802"]
     }
   ]
 }
@@ -309,7 +335,11 @@ KIPRIS/NICE 분류 검색에 투입할 수 있도록 지정상품 및 지정서�
 - 실제 출원 명세에 가까운 구체적 표현을 우선하세요.
 - 너무 포괄적인 명칭은 피하고, 필요하면 하드웨어/소프트웨어/서비스를 나누세요.
 - 지정상품 후보는 ${request.count ?? 12}개 생성하세요.
-- sourceType은 반드시 "ai_generated"로 쓰세요.
+- KIPRIS 유사상품군 근거를 채택하면 sourceType은 "accepted_similar_name"으로 쓰고 similarityGroupCodes를 유지하세요.
+- 내부 공식 고시명칭 근거를 채택하면 sourceType은 "official_notice_name"으로 쓰세요.
+- 내부 유사 인정명칭 근거를 채택하면 sourceType은 "accepted_similar_name"으로 쓰세요.
+- 근거 목록에 없는 보완 후보를 추가할 때만 sourceType은 "ai_generated"로 쓰세요.
+- ${request.evidencePolicy ?? 'KIPRIS 우선, 내부 DB 보조, AI 보완은 필요한 경우에만 사용'}
 
 [상표명]
 ${request.proposedMarkName}
@@ -317,7 +347,10 @@ ${request.proposedMarkName}
 [고객 상품/서비스 설명]
 ${request.goodsDescription}
 
-${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}`,
+${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}
+
+[KIPRIS 및 내부 DB 참고 근거]
+${JSON.stringify(candidateReferenceGoods(request), null, 2)}`,
       2400
     );
 
@@ -328,9 +361,10 @@ ${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}`,
         term: asString(row.term),
         normalizedTerm: asString(row.normalizedTerm, asString(row.term)),
         classNo: asNumber(row.classNo),
-        sourceType: 'ai_generated' as const,
+        sourceType: asCandidateSourceType(row.sourceType),
         confidence: asNumber(row.confidence, 0.7),
         rationale: asString(row.rationale),
+        similarityGroupCodes: asStringArray(row.similarityGroupCodes),
       };
     }).filter((candidate) => candidate.term && candidate.classNo > 0);
   }

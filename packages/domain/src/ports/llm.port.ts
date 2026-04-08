@@ -37,6 +37,19 @@ export interface CandidateGenerationRequest {
   classNo?: number;
   count?: number;
   includeCompetitors?: boolean;
+  referenceGoods?: CandidateReferenceGoods[];
+  evidencePolicy?: string;
+}
+
+export interface CandidateReferenceGoods {
+  term: string;
+  normalizedTerm: string;
+  classNo: number;
+  sourceType: "kipris_similar_goods" | "internal_official_notice_name" | "internal_accepted_similar_name";
+  confidence: number;
+  rationale: string;
+  similarityGroupCodes?: string[];
+  query?: string;
 }
 
 export interface GeneratedCandidate {

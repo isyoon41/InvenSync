@@ -7,7 +7,7 @@ import { RecommendGoodsEngine, type SimilarGoodsLookupPort } from "@ip-review/ll
 export interface CandidateGenerateRequest {
   inquiryId: string;
   llmPort: ILLMPort;
-  similarGoodsPort?: SimilarGoodsLookupPort;
+  similarGoodsPort: SimilarGoodsLookupPort;
   runVersion?: number;
 }
 

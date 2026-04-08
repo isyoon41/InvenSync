@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InquiryParseWorkflow } from '@ip-review/workflows';
 import { getRepositoryContainer } from '@ip-review/db';
-import { createLLMPort } from '@ip-review/llm-engine';
+import { createClaudeOnlyLLMPort } from '@ip-review/llm-engine';
 
 /**
  * POST /api/inquiries/[id]/parse
@@ -29,7 +29,7 @@ export async function POST(
       );
     }
 
-    const llmPort = createLLMPort();
+    const llmPort = createClaudeOnlyLLMPort();
 
     const workflow = new InquiryParseWorkflow(repositories);
     const result = await workflow.execute({

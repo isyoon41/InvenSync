@@ -8,6 +8,7 @@ export type {
   LLMAttachmentKind,
   LLMAttachmentStatus,
   CandidateGenerationRequest,
+  CandidateReferenceGoods,
   GeneratedCandidate,
   ReportGenerationRequest,
   GeneratedReport,

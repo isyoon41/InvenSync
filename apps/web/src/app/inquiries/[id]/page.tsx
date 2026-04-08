@@ -88,7 +88,7 @@ function WorkflowCommandCenter({
         return {
           eyebrow: '다음 작업 02',
           title: 'KIPRIS 근거로 지정상품 후보를 설계하세요',
-          description: '정규화된 상품·서비스를 바탕으로 고시명칭, 유사상품군, AI 보완 후보를 만듭니다.',
+          description: 'KIPRIS 유사상품군을 우선 조회하고 내부 DB는 보조 근거로 참고하여 Claude가 후보를 최종 선정합니다.',
           actionLabel: processing ? '지정상품 설계 중...' : '지정상품 설계 시작',
           onAction: onProcess,
           busy: processing,
@@ -237,8 +237,8 @@ function WorkflowOverview({
     {
       title: '2. 지정상품 설계',
       body: candidates.length
-        ? `KIPRIS/AI 근거 후보 ${candidates.length}개를 확인할 수 있습니다.`
-        : 'KIPRIS 유사상품군 기반 후보가 생성되면 류와 유사군 코드를 확인합니다.',
+        ? `Claude가 KIPRIS 우선 근거로 선정한 후보 ${candidates.length}개를 확인할 수 있습니다.`
+        : 'KIPRIS 유사상품군 우선 후보가 생성되면 류와 유사군 코드를 확인합니다.',
       done: candidates.length > 0,
       action: candidates.length ? (() => onSelectTab('candidates')) : null,
     },

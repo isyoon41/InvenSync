@@ -9,6 +9,14 @@ import { MockTrademarkAdapter } from './mock-adapter';
 
 export type TrademarkProviderMode = 'mock' | 'kipris' | 'python-sidecar';
 
+export function createKiprisOnlyTrademarkSearchPort(): ITrademarkSearchPort {
+  const accessKey = process.env.KIPRIS_API_KEY;
+  if (!accessKey) {
+    throw new Error('KIPRIS_API_KEY is required for KIPRIS trademark search');
+  }
+  return new KiprisAdapter(accessKey);
+}
+
 export function createTrademarkSearchPort(
   mode?: TrademarkProviderMode | string
 ): ITrademarkSearchPort {

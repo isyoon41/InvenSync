@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepositoryContainer, prisma } from '@ip-review/db';
 import { SearchExecuteWorkflow } from '@ip-review/workflows';
-import { createTrademarkSearchPort } from '@ip-review/kipris-client';
+import { createKiprisOnlyTrademarkSearchPort } from '@ip-review/kipris-client';
 
 /**
  * POST /api/search-jobs
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     // 검색 포트 생성 (환경변수 기반으로 실제/목 선택)
-    const searchPort = createTrademarkSearchPort();
+    const searchPort = createKiprisOnlyTrademarkSearchPort();
 
     // 검색 워크플로우 실행
     const workflow = new SearchExecuteWorkflow();

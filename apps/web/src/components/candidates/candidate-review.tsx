@@ -29,8 +29,8 @@ function getSimilarityGroupCodes(candidate: GoodsCandidate): string[] {
 }
 
 const sourceTypeConfig: Record<string, { label: string; badge: string; needsVerify: boolean }> = {
-  official_notice_name:   { label: 'KIPRIS 고시명칭', badge: 'bg-green-100 text-green-700', needsVerify: false },
-  accepted_similar_name:  { label: 'KIPRIS 유사명칭', badge: 'bg-blue-100 text-blue-700',  needsVerify: false },
+  official_notice_name:   { label: '고시명칭 근거', badge: 'bg-green-100 text-green-700', needsVerify: false },
+  accepted_similar_name:  { label: '유사상품군 근거', badge: 'bg-blue-100 text-blue-700',  needsVerify: false },
   ai_generated:           { label: 'AI 추천',         badge: 'bg-amber-100 text-amber-700', needsVerify: true  },
   manual:                 { label: '수동 입력',        badge: 'bg-gray-100 text-gray-700',   needsVerify: true  },
   competitor_reference:   { label: '경쟁사 참조',      badge: 'bg-purple-100 text-purple-700', needsVerify: true },
@@ -46,7 +46,7 @@ export function CandidateReview({
       <div className="px-6 py-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">🔍 지정상품 후보</h2>
         <p className="text-sm text-gray-600 mt-1">
-          KIPRIS 고시명칭·유사상품군과 AI 보완 근거로 {candidates.length}개 후보가 생성되었습니다
+          KIPRIS 유사상품군을 우선 조회하고 내부 DB를 보조 근거로 참고한 뒤, Claude가 {candidates.length}개 후보를 최종 선정했습니다
         </p>
       </div>
 

@@ -1,19 +1,9 @@
-/**
- * RecommendGoodsEngine — 상품 후보 추천 엔진
- *
- * 전략:
- * 1. IGoodsTermPort를 통해 DB에서 공식 고시 명칭 / 유사 인정 명칭 조회
- * 2. Jaro-Winkler 유사도로 질의어와 각 용어를 스코어링
- * 3. 임계값 이상인 DB 결과를 우선 반환 (출처 명시)
- * 4. 요청 count에 부족하면 ILLMPort로 AI 후보 추가 생성
- * 5. 중복 제거 후 최종 후보 배열 반환
- */
-
 import type {
+  CandidateGenerationRequest,
+  CandidateReferenceGoods,
+  GeneratedCandidate,
   IGoodsTermPort,
   ILLMPort,
-  GeneratedCandidate,
-  CandidateGenerationRequest,
 } from "@ip-review/domain";
 
 export interface SimilarGoodsLookupPort {
@@ -22,8 +12,6 @@ export interface SimilarGoodsLookupPort {
     classNo?: number
   ): Promise<Array<{ goodsName: string; similarCode: string; classNo: string }>>;
 }
-
-// ─── Jaro-Winkler 유사도 ───────────────────────────────────────────────────
 
 function jaroSimilarity(s: string, t: string): number {
   if (s === t) return 1;
@@ -38,14 +26,14 @@ function jaroSimilarity(s: string, t: string): number {
   let matches = 0;
   let transpositions = 0;
 
-  for (let i = 0; i < sLen; i++) {
+  for (let i = 0; i < sLen; i += 1) {
     const start = Math.max(0, i - matchWindow);
     const end = Math.min(i + matchWindow + 1, tLen);
-    for (let j = start; j < end; j++) {
+    for (let j = start; j < end; j += 1) {
       if (tMatches[j] || s[i] !== t[j]) continue;
       sMatches[i] = true;
       tMatches[j] = true;
-      matches++;
+      matches += 1;
       break;
     }
   }
@@ -53,33 +41,27 @@ function jaroSimilarity(s: string, t: string): number {
   if (matches === 0) return 0;
 
   let k = 0;
-  for (let i = 0; i < sLen; i++) {
+  for (let i = 0; i < sLen; i += 1) {
     if (!sMatches[i]) continue;
-    while (!tMatches[k]) k++;
-    if (s[i] !== t[k]) transpositions++;
-    k++;
+    while (!tMatches[k]) k += 1;
+    if (s[i] !== t[k]) transpositions += 1;
+    k += 1;
   }
 
-  return (
-    (matches / sLen +
-      matches / tLen +
-      (matches - transpositions / 2) / matches) /
-    3
-  );
+  return (matches / sLen + matches / tLen + (matches - transpositions / 2) / matches) / 3;
 }
 
 function jaroWinkler(s: string, t: string, p = 0.1): number {
   const jaro = jaroSimilarity(s, t);
   let prefix = 0;
   const maxPrefix = Math.min(4, Math.min(s.length, t.length));
-  for (let i = 0; i < maxPrefix; i++) {
-    if (s[i] === t[i]) prefix++;
+  for (let i = 0; i < maxPrefix; i += 1) {
+    if (s[i] === t[i]) prefix += 1;
     else break;
   }
   return jaro + prefix * p * (1 - jaro);
 }
 
-/** 한글/영문 소문자 정규화 (공백·특수문자 제거) */
 function normalize(s: string): string {
   return s
     .toLowerCase()
@@ -88,168 +70,158 @@ function normalize(s: string): string {
     .trim();
 }
 
-// ─── 엔진 ───────────────────────────────────────────────────────────────────
+function toGeneratedSourceType(
+  sourceType: CandidateReferenceGoods["sourceType"]
+): GeneratedCandidate["sourceType"] {
+  return sourceType === "internal_official_notice_name" ? "official_notice_name" : "accepted_similar_name";
+}
 
-const SIMILARITY_THRESHOLD = 0.62; // 이 이상이면 DB 매칭으로 인정
+function mergeEvidenceIntoCandidates(
+  candidates: GeneratedCandidate[],
+  evidence: CandidateReferenceGoods[]
+): GeneratedCandidate[] {
+  const evidenceByKey = new Map<string, CandidateReferenceGoods>();
+  for (const item of evidence) {
+    evidenceByKey.set(`${item.classNo}:${normalize(item.normalizedTerm || item.term)}`, item);
+  }
+
+  return candidates.map((candidate) => {
+    const key = `${candidate.classNo}:${normalize(candidate.normalizedTerm || candidate.term)}`;
+    const matched = evidenceByKey.get(key);
+    if (!matched) return candidate;
+
+    return {
+      ...candidate,
+      sourceType:
+        candidate.sourceType === "ai_generated" ? toGeneratedSourceType(matched.sourceType) : candidate.sourceType,
+      similarityGroupCodes:
+        candidate.similarityGroupCodes?.length ? candidate.similarityGroupCodes : matched.similarityGroupCodes,
+      rationale: candidate.rationale || matched.rationale,
+      confidence: Math.max(candidate.confidence, matched.confidence),
+    };
+  });
+}
+
+const SIMILARITY_THRESHOLD = 0.62;
 
 export class RecommendGoodsEngine {
   constructor(
     private goodsTermPort: IGoodsTermPort,
     private llmPort: ILLMPort,
-    private similarGoodsPort?: SimilarGoodsLookupPort
+    private similarGoodsPort: SimilarGoodsLookupPort
   ) {}
 
-  async recommend(
-    request: CandidateGenerationRequest
-  ): Promise<GeneratedCandidate[]> {
+  async recommend(request: CandidateGenerationRequest): Promise<GeneratedCandidate[]> {
     const targetCount = request.count ?? 8;
-    const classNo = request.classNo;
-
-    // 1. DB에서 전체 용어 가져오기
-    const [officialTerms, similarTerms] = await Promise.all([
-      this.goodsTermPort.findOfficialMatches(request.goodsDescription, classNo),
-      this.goodsTermPort.findSimilarMatches(request.goodsDescription, classNo),
+    const [kiprisEvidence, internalEvidence] = await Promise.all([
+      this.findKiprisSimilarGoodsEvidence(request, targetCount * 2),
+      this.findInternalGoodsEvidence(request, targetCount * 2),
     ]);
 
-    // 2. 유사도 스코어링
+    const referenceGoods = dedupeEvidence([...kiprisEvidence, ...internalEvidence]).slice(
+      0,
+      Math.max(targetCount * 3, 24)
+    );
+
+    const claudeCandidates = await this.llmPort.generateCandidates({
+      ...request,
+      count: targetCount,
+      referenceGoods,
+      evidencePolicy:
+        "KIPRIS similar-goods evidence must be reviewed first. Internal DB matches are secondary reference evidence. Claude must make the final selection and may use AI-generated candidates only when KIPRIS/internal evidence is insufficient.",
+    });
+
+    return mergeEvidenceIntoCandidates(claudeCandidates, referenceGoods).slice(0, targetCount);
+  }
+
+  private async findInternalGoodsEvidence(
+    request: CandidateGenerationRequest,
+    limit: number
+  ): Promise<CandidateReferenceGoods[]> {
+    const [officialTerms, similarTerms] = await Promise.all([
+      this.goodsTermPort.findOfficialMatches(request.goodsDescription, request.classNo),
+      this.goodsTermPort.findSimilarMatches(request.goodsDescription, request.classNo),
+    ]);
+
     const queryText = `${request.proposedMarkName} ${request.goodsDescription}`;
-
-    type ScoredTerm = {
-      term: string;
-      classNo: number;
-      sourceType: "official_notice_name" | "accepted_similar_name";
-      similarityGroupCodes: string[];
-      score: number;
-    };
-
     const score = (term: string): number => {
       const normTerm = normalize(term);
       const words = normalize(queryText)
         .split(" ")
         .filter(Boolean);
       if (words.length === 0) return 0;
-      const scores = words.map((w) => jaroWinkler(normTerm, w));
-      // 단어별 최고 유사도와 전체 문장 유사도의 가중 평균
+      const scores = words.map((word) => jaroWinkler(normTerm, word));
       const maxWord = Math.max(...scores);
       const fullSentence = jaroWinkler(normTerm, normalize(queryText));
       return maxWord * 0.7 + fullSentence * 0.3;
     };
 
-    const scoredOfficial: ScoredTerm[] = officialTerms.map((t) => ({
-      ...t,
-      sourceType: "official_notice_name" as const,
-      score: score(t.term),
-    }));
-
-    const scoredSimilar: ScoredTerm[] = similarTerms.map((t) => ({
-      ...t,
-      sourceType: "accepted_similar_name" as const,
-      score: score(t.term),
-    }));
-
-    // 3. 임계값 이상 필터 + 정렬 (공식 명칭 우선)
-    const dbMatches: GeneratedCandidate[] = [
-      ...scoredOfficial,
-      ...scoredSimilar,
+    return [
+      ...officialTerms.map((term) => ({
+        term,
+        sourceType: "internal_official_notice_name" as const,
+      })),
+      ...similarTerms.map((term) => ({
+        term,
+        sourceType: "internal_accepted_similar_name" as const,
+      })),
     ]
-      .filter((t) => t.score >= SIMILARITY_THRESHOLD)
-      .sort((a, b) => {
-        // 공식 명칭 우선, 동점이면 점수 순
-        if (
-          a.sourceType === "official_notice_name" &&
-          b.sourceType !== "official_notice_name"
-        )
-          return -1;
-        if (
-          a.sourceType !== "official_notice_name" &&
-          b.sourceType === "official_notice_name"
-        )
-          return 1;
-        return b.score - a.score;
-      })
-      .slice(0, targetCount)
-      .map((t) => ({
-        term: t.term,
-        normalizedTerm: t.term,
-        classNo: t.classNo,
-        sourceType: t.sourceType,
-        confidence: parseFloat(t.score.toFixed(3)),
+      .map(({ term, sourceType }) => ({
+        term: term.term,
+        normalizedTerm: term.term,
+        classNo: term.classNo,
+        sourceType,
+        confidence: Number(score(term.term).toFixed(3)),
         rationale:
-          t.sourceType === "official_notice_name"
-            ? `특허청 고시 상품명칭 DB 매칭 (유사도 ${Math.round(t.score * 100)}%)`
-            : `유사 인정 명칭 DB 매칭 (유사도 ${Math.round(t.score * 100)}%)`,
-        similarityGroupCodes: t.similarityGroupCodes,
-      }));
-
-    // 4. DB 결과가 충분하면 그대로 반환
-    if (dbMatches.length >= targetCount) {
-      return dbMatches;
-    }
-
-    // 4. KIPRIS 유사상품군 검색 결과를 후보 설계에 반영
-    const kiprisMatches = await this.findKiprisSimilarGoods(request, targetCount - dbMatches.length);
-    const mergedEvidenceMatches = dedupeCandidates([...dbMatches, ...kiprisMatches]).slice(0, targetCount);
-
-    if (mergedEvidenceMatches.length >= targetCount) {
-      return mergedEvidenceMatches;
-    }
-
-    // 5. 부족한 수만큼 LLM 후보 추가 생성
-    const needed = targetCount - mergedEvidenceMatches.length;
-    const existingTermNames = new Set(mergedEvidenceMatches.map((c) => c.normalizedTerm ?? c.term));
-
-    let aiCandidates: GeneratedCandidate[] = [];
-    try {
-      aiCandidates = await this.llmPort.generateCandidates({
-        ...request,
-        count: needed + 2, // 중복 제거 여유분
-      });
-    } catch {
-      // LLM 실패 시 DB 결과만 반환
-    }
-
-    // 6. 중복 제거 (DB에 이미 있는 용어 제외)
-    const deduped = aiCandidates
-      .filter((c) => !existingTermNames.has(c.normalizedTerm ?? c.term))
-      .slice(0, needed);
-
-    return [...mergedEvidenceMatches, ...deduped];
+          sourceType === "internal_official_notice_name"
+            ? "Internal official notice-name DB reference. Claude must verify suitability before selecting."
+            : "Internal accepted similar-name DB reference. Claude must verify suitability before selecting.",
+        similarityGroupCodes: term.similarityGroupCodes,
+      }))
+      .filter((term) => term.confidence >= SIMILARITY_THRESHOLD)
+      .sort((a, b) => {
+        if (a.sourceType === "internal_official_notice_name" && b.sourceType !== "internal_official_notice_name") {
+          return -1;
+        }
+        if (a.sourceType !== "internal_official_notice_name" && b.sourceType === "internal_official_notice_name") {
+          return 1;
+        }
+        return b.confidence - a.confidence;
+      })
+      .slice(0, limit);
   }
 
-  private async findKiprisSimilarGoods(
+  private async findKiprisSimilarGoodsEvidence(
     request: CandidateGenerationRequest,
     limit: number
-  ): Promise<GeneratedCandidate[]> {
-    if (!this.similarGoodsPort || limit <= 0) return [];
-
+  ): Promise<CandidateReferenceGoods[]> {
     const queries = buildSimilarGoodsQueries(request.goodsDescription);
-    const candidates: GeneratedCandidate[] = [];
+    const candidates: CandidateReferenceGoods[] = [];
 
     for (const query of queries) {
-      try {
-        const items = await this.similarGoodsPort.searchSimilarGoods(query, request.classNo);
-        for (const item of items) {
-          const classNo = parseInt(item.classNo, 10);
-          if (!item.goodsName || !Number.isFinite(classNo)) continue;
+      const items = await this.similarGoodsPort.searchSimilarGoods(query, request.classNo);
+      for (const item of items) {
+        const classNo = parseInt(item.classNo, 10);
+        if (!item.goodsName || !Number.isFinite(classNo)) continue;
 
-          candidates.push({
-            term: item.goodsName,
-            normalizedTerm: item.goodsName,
-            classNo,
-            sourceType: "accepted_similar_name",
-            confidence: 0.82,
-            rationale: `KIPRIS 유사상품군 검색("${query}") 결과를 반영했습니다. 유사군 코드: ${item.similarCode || "미상"}`,
-            similarityGroupCodes: item.similarCode ? [item.similarCode] : [],
-          });
-        }
-      } catch (error) {
-        console.warn(`[RecommendGoodsEngine] KIPRIS 유사상품군 검색 실패 (query=${query}):`, error);
+        candidates.push({
+          term: item.goodsName,
+          normalizedTerm: item.goodsName,
+          classNo,
+          sourceType: "kipris_similar_goods",
+          confidence: 0.9,
+          rationale: `KIPRIS similar-goods search result for "${query}". Similarity group code: ${
+            item.similarCode || "unknown"
+          }.`,
+          similarityGroupCodes: item.similarCode ? [item.similarCode] : [],
+          query,
+        });
       }
 
       if (candidates.length >= limit) break;
     }
 
-    return dedupeCandidates(candidates).slice(0, limit);
+    return dedupeEvidence(candidates).slice(0, limit);
   }
 }
 
@@ -261,7 +233,7 @@ function buildSimilarGoodsQueries(goodsDescription: string): string[] {
     .trim();
 
   const parts = normalized
-    .split(/[,，;；/\n]| 및 | 또는 | 관련 | 검토 | 지시 | 드립니다|해주세요|합니다|출원|상표/g)
+    .split(/[,;，、\n]| 및 | 또는 | 관련 | 검토 | 지정 | 서비스|해주세요|합니다|출원|상표/g)
     .map((part) => part.trim())
     .filter((part) => part.length >= 2 && part.length <= 40);
 
@@ -270,10 +242,10 @@ function buildSimilarGoodsQueries(goodsDescription: string): string[] {
     .slice(0, 4);
 }
 
-function dedupeCandidates(candidates: GeneratedCandidate[]): GeneratedCandidate[] {
+function dedupeEvidence(candidates: CandidateReferenceGoods[]): CandidateReferenceGoods[] {
   const seen = new Set<string>();
   return candidates.filter((candidate) => {
-    const key = `${candidate.classNo}:${normalize(candidate.normalizedTerm ?? candidate.term)}`;
+    const key = `${candidate.classNo}:${normalize(candidate.normalizedTerm || candidate.term)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

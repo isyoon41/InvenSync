@@ -32,7 +32,7 @@ export class InquiryOrchestrator {
     inquiryId: string,
     llmPort: ILLMPort,
     searchPort: ITrademarkSearchPort,
-    similarGoodsPort?: SimilarGoodsLookupPort
+    similarGoodsPort: SimilarGoodsLookupPort
   ): Promise<InquiryProcessingPipeline> {
     let inquiry = await this.repositories.inquiries.findById(inquiryId);
     if (!inquiry) {
@@ -107,7 +107,7 @@ export class InquiryOrchestrator {
     inquiryId: string,
     llmPort: ILLMPort,
     searchPort: ITrademarkSearchPort,
-    similarGoodsPort?: SimilarGoodsLookupPort
+    similarGoodsPort: SimilarGoodsLookupPort
   ): Promise<InquiryProcessingPipeline> {
     const inquiry = await this.repositories.inquiries.findById(inquiryId);
     if (!inquiry) {

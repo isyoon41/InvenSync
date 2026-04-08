@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CandidateGenerateWorkflow } from '@ip-review/workflows';
 import { getRepositoryContainer } from '@ip-review/db';
-import { createLLMPort, type SimilarGoodsLookupPort } from '@ip-review/llm-engine';
+import { createClaudeOnlyLLMPort, type SimilarGoodsLookupPort } from '@ip-review/llm-engine';
 import { KiprisAdapter } from '@ip-review/kipris-client';
 
-function createSimilarGoodsPort(): SimilarGoodsLookupPort | undefined {
-  if (process.env.TRADEMARK_PROVIDER_MODE !== 'kipris' || !process.env.KIPRIS_API_KEY) {
-    return undefined;
+function createKiprisSimilarGoodsPort(): SimilarGoodsLookupPort {
+  if (process.env.TRADEMARK_PROVIDER_MODE !== 'kipris') {
+    throw new Error('TRADEMARK_PROVIDER_MODE=kipris is required for designated-goods generation');
+  }
+  if (!process.env.KIPRIS_API_KEY) {
+    throw new Error('KIPRIS_API_KEY is required for designated-goods generation');
   }
 
   return new KiprisAdapter(process.env.KIPRIS_API_KEY);
@@ -39,13 +42,13 @@ export async function POST(
       );
     }
 
-    const llmPort = createLLMPort();
+    const llmPort = createClaudeOnlyLLMPort();
 
     const workflow = new CandidateGenerateWorkflow(repositories);
     const result = await workflow.execute({
       inquiryId: params.id,
       llmPort,
-      similarGoodsPort: createSimilarGoodsPort(),
+      similarGoodsPort: createKiprisSimilarGoodsPort(),
     });
 
     return NextResponse.json({
