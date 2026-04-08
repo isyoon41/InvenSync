@@ -18,18 +18,79 @@ const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
 type ClaudeJsonShape = Record<string, unknown>;
 
+function isRecord(value: unknown): value is ClaudeJsonShape {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function extractJsonObject(text: string): ClaudeJsonShape {
   const direct = text.trim();
-  try {
-    return JSON.parse(direct) as ClaudeJsonShape;
-  } catch {
-    const start = direct.indexOf('{');
-    const end = direct.lastIndexOf('}');
-    if (start >= 0 && end > start) {
-      return JSON.parse(direct.slice(start, end + 1)) as ClaudeJsonShape;
+  const candidates = [
+    direct,
+    ...Array.from(direct.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)).map((match) => match[1]?.trim() ?? ''),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (isRecord(parsed)) return parsed;
+    } catch {
+      // Try a balanced object extraction below.
     }
-    throw new Error('Claude response did not contain JSON');
   }
+
+  const extracted = extractFirstBalancedObject(direct);
+  if (extracted) {
+    const parsed = JSON.parse(extracted) as unknown;
+    if (isRecord(parsed)) return parsed;
+  }
+
+  throw new Error('Claude response did not contain a valid JSON object');
+}
+
+function extractFirstBalancedObject(text: string): string | null {
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') {
+      if (depth === 0) start = index;
+      depth += 1;
+      continue;
+    }
+
+    if (char === '}' && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        return text.slice(start, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function normalizeGeneratedText(value: unknown, fallback = ''): string {
+  return asString(value, fallback).replace(/\\n/g, '\n');
 }
 
 function asString(value: unknown, fallback = ''): string {
@@ -204,10 +265,10 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
     );
 
     return {
-      summary: asString(parsed.summary, '1. 지정상품의 선정\n\n지정상품 초안 생성에 실패했습니다. 수동 검토가 필요합니다.'),
-      riskNote: asString(parsed.riskNote, '3. 등록가능성 검토\n\n위험도: 중간 - 유사상표 검색 결과를 수동으로 확인해 주세요.'),
-      recommendation: asString(parsed.recommendation, '4. 종합 의견\n\n조건부 출원 검토가 필요합니다.'),
-      clientReplyDraft: asString(parsed.clientReplyDraft, '안녕하세요.\n\n상표 검토 의견을 준비 중입니다.\n\n감사합니다.'),
+      summary: normalizeGeneratedText(parsed.summary, '1. 지정상품의 선정\n\n지정상품 초안 생성에 실패했습니다. 수동 검토가 필요합니다.'),
+      riskNote: normalizeGeneratedText(parsed.riskNote, '3. 등록가능성 검토\n\n위험도: 중간 - 유사상표 검색 결과를 수동으로 확인해 주세요.'),
+      recommendation: normalizeGeneratedText(parsed.recommendation, '4. 종합 의견\n\n조건부 출원 검토가 필요합니다.'),
+      clientReplyDraft: normalizeGeneratedText(parsed.clientReplyDraft, '안녕하세요.\n\n상표 검토 의견을 준비 중입니다.\n\n감사합니다.'),
     };
   }
 
@@ -224,6 +285,17 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
         max_tokens: maxTokens,
         temperature: 0.2,
         system: 'You are a careful Korean trademark attorney assistant. Return valid JSON only.',
+        tools: [
+          {
+            name: 'emit_json',
+            description: 'Return the requested result as a JSON object matching the user prompt.',
+            input_schema: {
+              type: 'object',
+              additionalProperties: true,
+            },
+          },
+        ],
+        tool_choice: { type: 'tool', name: 'emit_json' },
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -234,9 +306,18 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
     }
 
     const payload = (await response.json()) as {
-      content?: Array<{ type: string; text?: string }>;
+      content?: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
     };
-    const text = payload.content?.find((item) => item.type === 'text')?.text;
+
+    const toolInput = payload.content?.find(
+      (item) => item.type === 'tool_use' && item.name === 'emit_json' && isRecord(item.input)
+    )?.input;
+    if (isRecord(toolInput)) return toolInput;
+
+    const text = payload.content
+      ?.filter((item) => item.type === 'text' && typeof item.text === 'string')
+      .map((item) => item.text)
+      .join('\n');
     if (!text) throw new Error('Anthropic API response did not include text content');
     return extractJsonObject(text);
   }
