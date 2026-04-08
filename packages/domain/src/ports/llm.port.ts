@@ -14,6 +14,7 @@ export interface LLMParseRequest {
   senderEmail?: string;
   proposedMarkName?: string;
   attachments?: LLMAttachmentContext[];
+  referenceEvidence?: string;
 }
 
 export type LLMAttachmentKind = "text" | "pdf" | "image" | "unsupported";

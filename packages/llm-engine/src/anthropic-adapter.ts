@@ -272,6 +272,7 @@ export class AnthropicLLMAdapter implements ILLMPort {
       `당신은 한국 상표 출원 검토를 준비하는 변리사 보조자입니다.
 
 아래 고객 요청과 첨부파일에서 상표 검토에 필요한 정보를 추출하세요. 첨부파일의 검토 요청서, 상품 설명서, 이미지에 상표명이나 상품·서비스 설명이 있으면 의뢰 내용과 함께 반영하세요. 반드시 JSON 객체만 출력하세요.
+KIPRIS 1차 참고 근거가 제공되면 이를 먼저 검토하되, 고객 요청과 충돌하는 경우에는 충돌 여부를 reasoning에 명시하세요.
 
 출력 형식:
 {
@@ -285,6 +286,9 @@ export class AnthropicLLMAdapter implements ILLMPort {
 
 [의뢰 제목]
 ${request.title}
+
+[KIPRIS 1차 참고 근거]
+${request.referenceEvidence ?? '없음'}
 
 [제안 상표명]
 ${request.proposedMarkName ?? '미기재'}

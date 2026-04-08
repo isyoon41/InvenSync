@@ -7,6 +7,7 @@ import { getInquiryAttachmentContexts } from "./attachment-context";
 export interface InquiryParseRequest {
   inquiryId: string;
   llmPort: ILLMPort;
+  kiprisNormalizationEvidence?: string;
 }
 
 export interface InquiryParseResult {
@@ -41,6 +42,7 @@ export class InquiryParseWorkflow {
         senderEmail: inquiry.senderEmail,
         proposedMarkName: inquiry.proposedMarkName,
         attachments: getInquiryAttachmentContexts(inquiry),
+        referenceEvidence: request.kiprisNormalizationEvidence,
       });
 
       if (!parsedData.markNameNormalized || !parsedData.goodsDescriptionNormalized) {

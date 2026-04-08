@@ -2,10 +2,68 @@ import { NextRequest, NextResponse } from 'next/server';
 import { InquiryParseWorkflow } from '@ip-review/workflows';
 import { getRepositoryContainer } from '@ip-review/db';
 import { createClaudeOnlyLLMPort } from '@ip-review/llm-engine';
+import { createKiprisOnlyTrademarkSearchPort } from '@ip-review/kipris-client';
+
+function compactQuery(value?: string | null, maxLength = 80): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+async function buildKiprisNormalizationEvidence(inquiry: {
+  title: string;
+  rawText: string;
+  proposedMarkName?: string | null;
+}): Promise<string> {
+  const searchPort = createKiprisOnlyTrademarkSearchPort();
+  const markQuery = compactQuery(inquiry.proposedMarkName || inquiry.title, 60);
+  const goodsQuery = compactQuery(inquiry.rawText, 80);
+
+  const [markResults, goodsResults] = await Promise.all([
+    markQuery
+      ? searchPort.search({
+          sourceSystem: 'kipris',
+          mode: 'exact_mark',
+          params: { markName: markQuery },
+        })
+      : Promise.resolve([]),
+    goodsQuery
+      ? searchPort.search({
+          sourceSystem: 'kipris',
+          mode: 'designated_goods',
+          params: { goodsDescription: goodsQuery },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  return JSON.stringify(
+    {
+      policy: 'KIPRIS was queried before Claude normalization. Use these results as first-priority reference evidence; use the customer request as source of truth when evidence is sparse or conflicting.',
+      queries: { markQuery, goodsQuery },
+      markResults: markResults.slice(0, 5).map((result) => ({
+        markName: result.markName,
+        applicantName: result.applicantName,
+        classNo: result.classNo,
+        statusLabel: result.statusLabel,
+        designatedGoodsSummary: result.designatedGoodsSummary,
+        applicationNumber: result.applicationNumber,
+        relevanceScore: result.relevanceScore,
+      })),
+      goodsResults: goodsResults.slice(0, 5).map((result) => ({
+        markName: result.markName,
+        applicantName: result.applicantName,
+        classNo: result.classNo,
+        statusLabel: result.statusLabel,
+        designatedGoodsSummary: result.designatedGoodsSummary,
+        applicationNumber: result.applicationNumber,
+      })),
+    },
+    null,
+    2
+  );
+}
 
 /**
  * POST /api/inquiries/[id]/parse
- * 의뢰 정규화 — Gemini LLM으로 상표명·지정상품 추출
+ * 의뢰 정규화 — KIPRIS 1차 근거를 참고해 Claude가 상표명·지정상품 추출
  */
 export async function POST(
   _request: NextRequest,
@@ -30,11 +88,13 @@ export async function POST(
     }
 
     const llmPort = createClaudeOnlyLLMPort();
+    const kiprisNormalizationEvidence = await buildKiprisNormalizationEvidence(inquiry);
 
     const workflow = new InquiryParseWorkflow(repositories);
     const result = await workflow.execute({
       inquiryId: params.id,
       llmPort,
+      kiprisNormalizationEvidence,
     });
 
     return NextResponse.json({
