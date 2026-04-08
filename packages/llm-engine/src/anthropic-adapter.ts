@@ -5,6 +5,7 @@
 
 import type {
   ILLMPort,
+  LLMAttachmentContext,
   LLMParseRequest,
   ParsedInquiryData,
   CandidateGenerationRequest,
@@ -20,6 +21,21 @@ const MAX_ANTHROPIC_ATTEMPTS = 4;
 const DEFAULT_RETRY_DELAYS_MS = [1200, 2500, 5000];
 
 type ClaudeJsonShape = Record<string, unknown>;
+
+type AnthropicTextBlock = { type: 'text'; text: string };
+type AnthropicDocumentBlock = {
+  type: 'document';
+  source: { type: 'base64'; media_type: 'application/pdf'; data: string };
+};
+type AnthropicImageBlock = {
+  type: 'image';
+  source: {
+    type: 'base64';
+    media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    data: string;
+  };
+};
+type AnthropicUserContentBlock = AnthropicTextBlock | AnthropicDocumentBlock | AnthropicImageBlock;
 
 function isRecord(value: unknown): value is ClaudeJsonShape {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -132,6 +148,64 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function isSupportedImageMimeType(mimeType: string): mimeType is AnthropicImageBlock['source']['media_type'] {
+  return mimeType === 'image/jpeg' || mimeType === 'image/png' || mimeType === 'image/gif' || mimeType === 'image/webp';
+}
+
+function formatAttachmentText(attachments: LLMAttachmentContext[] | undefined): string {
+  if (!attachments?.length) return '[첨부파일]\n없음';
+
+  const lines = attachments.map((attachment, index) => {
+    const base = `${index + 1}. ${attachment.fileName} (${attachment.mimeType}, ${Math.round(attachment.sizeBytes / 1024)}KB, ${attachment.extractionStatus})`;
+    if (attachment.textContent) {
+      return `${base}\n--- 추출 텍스트 ---\n${attachment.textContent}`;
+    }
+    if (attachment.kind === 'pdf' || attachment.kind === 'image') {
+      return `${base}\n원본 파일은 Claude의 ${attachment.kind === 'pdf' ? 'document' : 'image'} 입력 블록으로 함께 제공됩니다.`;
+    }
+    return `${base}${attachment.error ? `\n분석 제외 사유: ${attachment.error}` : ''}`;
+  });
+
+  return `[첨부파일]\n${lines.join('\n\n')}`;
+}
+
+function buildUserContent(prompt: string, attachments: LLMAttachmentContext[] | undefined): AnthropicUserContentBlock[] {
+  const content: AnthropicUserContentBlock[] = [];
+
+  for (const attachment of attachments ?? []) {
+    if (attachment.extractionStatus !== 'ready' || !attachment.base64Data) continue;
+
+    if (attachment.kind === 'pdf' && attachment.mimeType === 'application/pdf') {
+      content.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: attachment.base64Data,
+        },
+      });
+    }
+
+    if (attachment.kind === 'image' && isSupportedImageMimeType(attachment.mimeType)) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: attachment.mimeType,
+          data: attachment.base64Data,
+        },
+      });
+    }
+  }
+
+  content.push({
+    type: 'text',
+    text: `${prompt}\n\n${formatAttachmentText(attachments)}`,
+  });
+
+  return content;
+}
+
 function topSearchResults(request: ReportGenerationRequest) {
   return request.searchResults.slice(0, 12).map((result, index) => ({
     index: index + 1,
@@ -173,7 +247,7 @@ export class AnthropicLLMAdapter implements ILLMPort {
     const parsed = await this.completeJson(
       `당신은 한국 상표 출원 검토를 준비하는 변리사 보조자입니다.
 
-아래 고객 요청에서 상표 검토에 필요한 정보를 추출하세요. 반드시 JSON 객체만 출력하세요.
+아래 고객 요청과 첨부파일에서 상표 검토에 필요한 정보를 추출하세요. 첨부파일의 검토 요청서, 상품 설명서, 이미지에 상표명이나 상품·서비스 설명이 있으면 의뢰 내용과 함께 반영하세요. 반드시 JSON 객체만 출력하세요.
 
 출력 형식:
 {
@@ -196,7 +270,8 @@ ${request.rawText}
 
 [발신자]
 ${request.senderEmail ?? '미기재'}`,
-      1200
+      1200,
+      request.attachments
     );
 
     return {
@@ -264,7 +339,7 @@ ${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}`,
     const parsed = await this.completeJson(
       `당신은 한국 상표 검토 의견서를 작성하는 변리사입니다.
 
-아래 자료를 근거로 고객에게 전달하기 전 변리사가 검토·수정할 수 있는 초안을 작성하세요. 반드시 JSON 객체만 출력하세요.
+아래 자료와 고객 첨부파일을 근거로 고객에게 전달하기 전 변리사가 검토·수정할 수 있는 초안을 작성하세요. 첨부파일에 포함된 검토 요청서, 상품 소개서, 로고/상표 이미지의 맥락도 반영하세요. 반드시 JSON 객체만 출력하세요.
 
 최종 문서 형식은 다음 Word 양식을 따르세요:
 - 제목: 상표 출원 검토 의견서 / TRADEMARK APPLICATION REVIEW OPINION
@@ -307,7 +382,8 @@ ${JSON.stringify(topSearchResults(request), null, 2)}
 
 [이전 리포트 또는 참고사항]
 ${request.previousReports?.join('\n\n') ?? '없음'}`,
-      4200
+      4200,
+      request.attachments
     );
 
     return {
@@ -318,8 +394,12 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
     };
   }
 
-  private async completeJson(prompt: string, maxTokens: number): Promise<ClaudeJsonShape> {
-    const response = await this.fetchWithRetry(prompt, maxTokens);
+  private async completeJson(
+    prompt: string,
+    maxTokens: number,
+    attachments?: LLMAttachmentContext[]
+  ): Promise<ClaudeJsonShape> {
+    const response = await this.fetchWithRetry(prompt, maxTokens, attachments);
 
     const payload = (await response.json()) as {
       content?: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
@@ -338,7 +418,11 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
     return extractJsonObject(text);
   }
 
-  private async fetchWithRetry(prompt: string, maxTokens: number): Promise<Response> {
+  private async fetchWithRetry(
+    prompt: string,
+    maxTokens: number,
+    attachments?: LLMAttachmentContext[]
+  ): Promise<Response> {
     let lastError: Error | undefined;
 
     for (let attempt = 1; attempt <= MAX_ANTHROPIC_ATTEMPTS; attempt += 1) {
@@ -368,7 +452,7 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
               },
             ],
             tool_choice: { type: 'tool', name: 'emit_json' },
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: buildUserContent(prompt, attachments) }],
           }),
         });
       } catch (error) {

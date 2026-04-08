@@ -13,6 +13,22 @@ export interface LLMParseRequest {
   rawHtml?: string;
   senderEmail?: string;
   proposedMarkName?: string;
+  attachments?: LLMAttachmentContext[];
+}
+
+export type LLMAttachmentKind = "text" | "pdf" | "image" | "unsupported";
+
+export type LLMAttachmentStatus = "ready" | "too_large" | "unsupported" | "failed";
+
+export interface LLMAttachmentContext {
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: LLMAttachmentKind;
+  extractionStatus: LLMAttachmentStatus;
+  textContent?: string;
+  base64Data?: string;
+  error?: string;
 }
 
 export interface CandidateGenerationRequest {
@@ -62,6 +78,7 @@ export interface ReportGenerationRequest {
   industry?: string;
   // 담당 변리사
   handlerName?: string;
+  attachments?: LLMAttachmentContext[];
   previousReports?: string[];
 }
 

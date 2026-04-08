@@ -10,6 +10,7 @@ import {
 } from '@google/generative-ai';
 import type {
   ILLMPort,
+  LLMAttachmentContext,
   LLMParseRequest,
   ParsedInquiryData,
   CandidateGenerationRequest,
@@ -19,6 +20,21 @@ import type {
 } from '@ip-review/domain';
 
 const MODEL_FLASH = 'gemini-2.5-flash';
+
+function formatAttachmentPrompt(attachments: LLMAttachmentContext[] | undefined): string {
+  if (!attachments?.length) return '[첨부파일]\n없음';
+
+  return `[첨부파일]\n${attachments.map((attachment, index) => {
+    const header = `${index + 1}. ${attachment.fileName} (${attachment.mimeType}, ${Math.round(attachment.sizeBytes / 1024)}KB, ${attachment.extractionStatus})`;
+    if (attachment.textContent) {
+      return `${header}\n--- 추출 텍스트 ---\n${attachment.textContent}`;
+    }
+    if (attachment.kind === 'pdf' || attachment.kind === 'image') {
+      return `${header}\nClaude 원본 분석 대상 파일입니다. Gemini fallback에서는 파일명과 형식만 참고하세요.`;
+    }
+    return `${header}${attachment.error ? `\n분석 제외 사유: ${attachment.error}` : ''}`;
+  }).join('\n\n')}`;
+}
 
 export class GeminiLLMAdapter implements ILLMPort {
   private client: GoogleGenerativeAI;
@@ -75,6 +91,9 @@ ${request.rawText}
 
 [발신자]
 ${request.senderEmail ?? '미기재'}
+
+[첨부파일 분석 컨텍스트]
+${formatAttachmentPrompt(request.attachments)}
 
 다음 규칙을 따르세요:
 - markNameNormalized: 제안 상표명을 정규화 (한글/영문 병기, 특수문자 제거)
@@ -232,6 +251,9 @@ ${similarList || '검색 결과 없음 — 충돌 상표 없음'}
 
 [지정상품 후보 및 유사군 근거]
 ${candidateList || '지정상품 후보 근거 없음'}
+
+[첨부파일 분석 컨텍스트]
+${formatAttachmentPrompt(request.attachments)}
 
 ---
 

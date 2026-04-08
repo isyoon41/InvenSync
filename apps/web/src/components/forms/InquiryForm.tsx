@@ -3,13 +3,18 @@
 import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
+const MAX_ATTACHMENT_COUNT = 10;
+const MAX_ATTACHMENT_SIZE_BYTES = 4 * 1024 * 1024;
+const MAX_TOTAL_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const SUPPORTED_ATTACHMENT_EXTENSIONS = ['.pdf', '.docx', '.txt', '.md', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.gif'];
+
 export interface InquiryFormProps {
   firmId?: string;
   defaultHandlerName?: string;
   defaultHandlerDept?: string;
 }
 
-interface FormData {
+interface InquiryFormData {
   title: string;
   clientName: string;
   companyName: string;
@@ -22,6 +27,7 @@ interface FormErrors {
   title?: string;
   clientName?: string;
   content?: string;
+  attachments?: string;
 }
 
 export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', defaultHandlerDept = '' }: InquiryFormProps) {
@@ -32,7 +38,7 @@ export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', def
   const [files, setFiles] = useState<File[]>([]);
   const [handlerName, setHandlerName] = useState(defaultHandlerName);
   const [handlerDept, setHandlerDept] = useState(defaultHandlerDept);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<InquiryFormData>({
     title: '',
     clientName: '',
     companyName: '',
@@ -90,14 +96,47 @@ export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', def
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFiles(Array.from(e.dataTransfer.files));
+      setFiles(validateFiles(Array.from(e.dataTransfer.files)));
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles(Array.from(e.target.files));
+      setFiles(validateFiles(Array.from(e.target.files)));
     }
+  };
+
+  const validateFiles = (nextFiles: File[]): File[] => {
+    const limitedFiles = nextFiles.slice(0, MAX_ATTACHMENT_COUNT);
+    const rejected = nextFiles.length > MAX_ATTACHMENT_COUNT
+      ? [`최대 ${MAX_ATTACHMENT_COUNT}개까지만 첨부할 수 있습니다.`]
+      : [];
+
+    let totalSize = 0;
+    const accepted = limitedFiles.filter((file) => {
+      const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+      const isSupported = SUPPORTED_ATTACHMENT_EXTENSIONS.includes(extension);
+      const isSmallEnough = file.size <= MAX_ATTACHMENT_SIZE_BYTES;
+      const fitsTotalLimit = totalSize + file.size <= MAX_TOTAL_ATTACHMENT_SIZE_BYTES;
+      if (!isSupported) {
+        rejected.push(`${file.name}: PDF, DOCX, 텍스트, 이미지 파일만 분석할 수 있습니다.`);
+      }
+      if (!isSmallEnough) {
+        rejected.push(`${file.name}: 파일당 4MB 이하만 분석할 수 있습니다.`);
+      }
+      if (!fitsTotalLimit) {
+        rejected.push(`${file.name}: 전체 첨부파일 용량은 10MB 이하만 분석할 수 있습니다.`);
+      }
+      const isAccepted = isSupported && isSmallEnough && fitsTotalLimit;
+      if (isAccepted) totalSize += file.size;
+      return isAccepted;
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      attachments: rejected.length ? rejected.join(' ') : undefined,
+    }));
+    return accepted;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -109,28 +148,26 @@ export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', def
 
     setLoading(true);
     try {
+      const payload = new FormData();
+      payload.append('firmId', firmId);
+      payload.append('title', formData.title);
+      payload.append('clientName', formData.clientName);
+      payload.append('companyName', formData.companyName);
+      payload.append('clientEmail', formData.clientEmail);
+      payload.append('handlerName', handlerName);
+      payload.append('handlerDept', handlerDept);
+      payload.append('rawText', formData.content);
+      payload.append('tags', formData.tags);
+      files.forEach((file) => payload.append('attachments', file));
+
       const response = await fetch('/api/inquiries', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firmId,
-          title: formData.title,
-          clientName: formData.clientName,
-          companyName: formData.companyName,
-          clientEmail: formData.clientEmail,
-          rawText: formData.content,
-          tags: formData.tags
-            ? formData.tags.split(',').map((t) => t.trim())
-            : [],
-          attachmentCount: files.length,
-        }),
+        body: payload,
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || '의뢰 등록에 실패했습니다');
+        throw new Error(error.message || error.error || '의뢰 등록에 실패했습니다');
       }
 
       const data = await response.json();
@@ -308,6 +345,7 @@ export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', def
             type="file"
             id="files"
             multiple
+            accept=".pdf,.docx,.txt,.md,.csv,.png,.jpg,.jpeg,.webp,.gif"
             onChange={handleFileChange}
             className="hidden"
           />
@@ -318,20 +356,30 @@ export function InquiryForm({ firmId = 'demo-firm', defaultHandlerName = '', def
             <div className="text-gray-600">
               <p className="font-medium">파일을 드래그하거나 클릭하여 업로드</p>
               <p className="text-sm text-gray-500 mt-1">
-                PDF, Word, Excel 문서 (최대 10개)
+                PDF, Word(.docx), 텍스트, 이미지 파일 (최대 10개, 파일당 4MB, 전체 10MB)
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                첨부파일은 정규화와 검토 의견서 생성 시 함께 분석됩니다.
               </p>
             </div>
           </label>
 
+          {errors.attachments && (
+            <p className="mt-3 text-sm text-red-600">{errors.attachments}</p>
+          )}
+
           {files.length > 0 && (
             <div className="mt-4 text-left">
               <p className="text-sm font-medium text-gray-700 mb-2">
-                선택된 파일:
+                AI 분석 대상 첨부파일:
               </p>
               <ul className="space-y-1">
                 {files.map((file, idx) => (
-                  <li key={idx} className="text-sm text-gray-600">
-                    • {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                  <li key={idx} className="flex items-center justify-between gap-3 rounded-md bg-white px-3 py-2 text-sm text-gray-600">
+                    <span>• {file.name}</span>
+                    <span className="shrink-0 text-xs text-blue-600">
+                      {(file.size / 1024).toFixed(1)} KB · 분석 예정
+                    </span>
                   </li>
                 ))}
               </ul>

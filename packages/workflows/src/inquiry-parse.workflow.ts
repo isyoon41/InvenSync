@@ -2,6 +2,7 @@ import type { ILLMPort, Inquiry, ParsedInquiryData } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
+import { getInquiryAttachmentContexts } from "./attachment-context";
 
 export interface InquiryParseRequest {
   inquiryId: string;
@@ -39,6 +40,7 @@ export class InquiryParseWorkflow {
         rawHtml: inquiry.rawHtml,
         senderEmail: inquiry.senderEmail,
         proposedMarkName: inquiry.proposedMarkName,
+        attachments: getInquiryAttachmentContexts(inquiry),
       });
 
       if (!parsedData.markNameNormalized || !parsedData.goodsDescriptionNormalized) {

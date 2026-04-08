@@ -2,6 +2,7 @@ import type { ILLMPort, ReviewReport } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
+import { getInquiryAttachmentContexts } from "./attachment-context";
 
 export interface ReportGenerateRequest {
   inquiryId: string;
@@ -63,6 +64,7 @@ export class ReportGenerateWorkflow {
       const clientName: string | undefined = meta.clientName || undefined;
       const companyName: string | undefined = meta.companyName || undefined;
       const clientEmail: string | undefined = meta.clientEmail || inquiry.senderEmail || undefined;
+      const handlerName: string | undefined = meta.handlerName || undefined;
 
       // Generate report using LLM — 전체 컨텍스트 전달
       const generatedReport = await request.llmPort.generateReport({
@@ -90,6 +92,8 @@ export class ReportGenerateWorkflow {
         parsedMarkName: parsedRequest?.markNameNormalized ?? undefined,
         parsedGoods: parsedRequest?.goodsDescriptionNormalized ?? undefined,
         industry: parsedRequest?.industryGuess ?? undefined,
+        handlerName,
+        attachments: getInquiryAttachmentContexts(inquiry),
       });
 
       // Create review report
