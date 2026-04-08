@@ -218,6 +218,21 @@ export class SearchExecuteWorkflow {
         executionTimeMs,
       };
     } catch (error) {
+      try {
+        const latestJob = await this.repositories.searchJobs.findById(request.searchJobId);
+        if (latestJob && latestJob.state !== "done") {
+          await this.repositories.searchJobs.update(request.searchJobId, {
+            state: "failed",
+            completedAt: new Date(),
+          });
+        }
+      } catch (updateError) {
+        console.warn(
+          `[SearchExecuteWorkflow] failed to mark search job ${request.searchJobId} as failed:`,
+          updateError
+        );
+      }
+
       if (error instanceof ValidationError || error instanceof InquiryProcessingError) {
         throw error;
       }

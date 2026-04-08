@@ -35,9 +35,9 @@ export async function POST(
       );
     }
 
-    if (inquiry.status !== 'parsed') {
+    if (!['parsed', 'candidate_ready'].includes(inquiry.status)) {
       return NextResponse.json(
-        { error: `지정상품 설계는 '정규화 완료' 상태에서만 가능합니다. 현재 상태: ${inquiry.status}` },
+        { error: `지정상품 설계는 '정규화 완료' 또는 '후보 생성' 상태에서만 가능합니다. 현재 상태: ${inquiry.status}` },
         { status: 422 }
       );
     }

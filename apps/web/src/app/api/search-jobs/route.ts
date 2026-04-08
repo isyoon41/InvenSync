@@ -55,6 +55,21 @@ export async function POST(request: NextRequest) {
       resolvedCandidateRunId = latestRun?.id;
     }
 
+    if (!resolvedCandidateRunId) {
+      return NextResponse.json(
+        { error: '완료된 지정상품 후보 생성 결과가 없습니다. 먼저 지정상품 후보를 생성해 주세요.' },
+        { status: 422 }
+      );
+    }
+
+    const candidates = await repositories.candidates.findByCandidateRun(resolvedCandidateRunId);
+    if (candidates.length === 0) {
+      return NextResponse.json(
+        { error: '지정상품 후보가 비어 있어 유사상표 검색을 시작할 수 없습니다. 지정상품 후보를 다시 생성해 주세요.' },
+        { status: 422 }
+      );
+    }
+
     // 검색 작업 생성
     const searchJob = await repositories.searchJobs.create({
       inquiryId,

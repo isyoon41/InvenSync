@@ -45,6 +45,7 @@ function WorkflowCommandCenter({
   processing,
   searching,
   generatingReport,
+  processMessage,
   searchMessage,
   reportMessage,
   onParse,
@@ -62,6 +63,7 @@ function WorkflowCommandCenter({
   processing: boolean;
   searching: boolean;
   generatingReport: boolean;
+  processMessage: string | null;
   searchMessage: string | null;
   reportMessage: string | null;
   onParse: () => void;
@@ -96,6 +98,18 @@ function WorkflowCommandCenter({
           outputHint: '완료 후 지정상품 후보 탭에서 류와 유사군 코드를 확인합니다.',
         };
       case 'candidate_ready':
+        if (candidates.length === 0) {
+          return {
+            eyebrow: '점검 필요',
+            title: '지정상품 후보를 다시 생성하세요',
+            description: '현재 상태는 후보 생성 단계로 넘어갔지만 불러올 지정상품 후보가 없습니다. KIPRIS 근거와 Claude 판단으로 후보를 다시 생성합니다.',
+            actionLabel: processing ? '지정상품 재생성 중...' : '지정상품 후보 재생성',
+            onAction: onProcess,
+            busy: processing,
+            tone: 'blue',
+            outputHint: '완료 후 지정상품 후보 탭에서 후보명, 류, 유사군 코드를 확인합니다.',
+          };
+        }
         return {
           eyebrow: '다음 작업 03',
           title: 'KIPRIS 유사상표 검색을 실행하세요',
@@ -146,7 +160,11 @@ function WorkflowCommandCenter({
     },
     {
       label: '지정상품 후보',
-      value: candidates.length ? `${candidates.length}개 후보` : '대기 중',
+      value: candidates.length
+        ? `${candidates.length}개 후보`
+        : inquiry.status === 'candidate_ready'
+          ? '재생성 필요'
+          : '대기 중',
       done: candidates.length > 0,
       tab: 'candidates' as const,
     },
@@ -179,9 +197,9 @@ function WorkflowCommandCenter({
         </button>
       </div>
 
-      {(searchMessage || reportMessage) && (
+      {(processMessage || searchMessage || reportMessage) && (
         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          {searchMessage || reportMessage}
+          {processMessage || searchMessage || reportMessage}
         </div>
       )}
 
@@ -367,6 +385,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
   const [parsing, setParsing] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [processMessage, setProcessMessage] = useState<string | null>(null);
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportMessage, setReportMessage] = useState<string | null>(null);
@@ -467,25 +486,39 @@ export default function InquiryDetailPage({ params }: PageProps) {
 
   const handleProcess = async () => {
     setProcessing(true);
+    setProcessMessage(null);
+    setSearchMessage(null);
     try {
       const res = await fetch(`/api/inquiries/${params.id}/process`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
       const result = await res.json();
+      if (!res.ok || !result.success) {
+        setProcessMessage(`오류: ${result.error || '지정상품 후보 생성에 실패했습니다'}`);
+        return;
+      }
+
       if (result.success) {
         // 상태 갱신
         const updatedRes = await fetch(`/api/inquiries/${params.id}`);
         setInquiry(await updatedRes.json());
         const candidateRes = await fetch(`/api/candidates?candidateRunId=${result.candidateRunId}`);
         const candidateData = await candidateRes.json();
-        setCandidates(candidateData.items || []);
+        const nextCandidates = candidateData.items || [];
+        setCandidates(nextCandidates);
+        setProcessMessage(
+          nextCandidates.length
+            ? result.message || `${nextCandidates.length}개의 지정상품 후보가 생성되었습니다`
+            : '지정상품 후보 생성은 완료됐지만 후보를 불러오지 못했습니다. 후보 재생성을 다시 실행해 주세요.'
+        );
         // 지정상품 완료 → 후보 탭으로 이동
         setActiveTab('candidates');
         setTimeout(() => tabRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
       }
     } catch (error) {
       console.error('Failed to process inquiry:', error);
+      setProcessMessage('지정상품 후보 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setProcessing(false);
     }
@@ -519,6 +552,10 @@ export default function InquiryDetailPage({ params }: PageProps) {
   };
 
   const handleSearch = async () => {
+    if (candidates.length === 0) {
+      setSearchMessage('먼저 지정상품 후보를 생성해 주세요. 후보가 비어 있으면 지정상품 후보 재생성을 실행해 주세요.');
+      return;
+    }
     setSearching(true);
     setSearchMessage(null);
     try {
@@ -612,6 +649,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
           processing={processing}
           searching={searching}
           generatingReport={generatingReport}
+          processMessage={processMessage}
           searchMessage={searchMessage}
           reportMessage={reportMessage}
           onParse={handleParse}

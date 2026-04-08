@@ -27,11 +27,11 @@ export class CandidateGenerateWorkflow {
         throw new ValidationError(`Inquiry not found: ${request.inquiryId}`);
       }
 
-      if (inquiry.status !== "parsed") {
+      if (!["parsed", "candidate_ready"].includes(inquiry.status)) {
         throw new InquiryProcessingError(
           inquiry.id,
           "candidate_generation",
-          `Inquiry must be in 'parsed' status, got '${inquiry.status}'`
+          `Inquiry must be in 'parsed' or 'candidate_ready' status, got '${inquiry.status}'`
         );
       }
 
@@ -48,7 +48,11 @@ export class CandidateGenerateWorkflow {
         );
       }
 
-      const runVersion = request.runVersion || 1;
+      const latestRun = await prisma.candidateRun.findFirst({
+        where: { inquiryId: inquiry.id },
+        orderBy: { runVersion: "desc" },
+      });
+      const runVersion = request.runVersion || ((latestRun?.runVersion ?? 0) + 1);
       const parsedJson = (parsedRequest.parsedJson ?? {}) as { targetClasses?: unknown };
       const targetClasses = normalizeTargetClasses(parsedJson.targetClasses);
 
@@ -80,6 +84,18 @@ export class CandidateGenerateWorkflow {
         count: 8,
         includeCompetitors: true,
       });
+
+      if (generatedCandidates.length === 0) {
+        await prisma.candidateRun.update({
+          where: { id: candidateRun.id },
+          data: { state: "failed" },
+        });
+        throw new InquiryProcessingError(
+          inquiry.id,
+          "candidate_generation",
+          "KIPRIS 근거와 Claude 판단 결과 생성된 지정상품 후보가 없습니다. 의뢰 내용이나 첨부파일에서 상품·서비스 설명을 보강한 뒤 다시 실행해 주세요."
+        );
+      }
 
       // Store candidates
       const storedCandidates = await Promise.all(
