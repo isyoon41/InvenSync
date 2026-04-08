@@ -21,28 +21,92 @@ export interface SearchExecuteResult {
   executionTimeMs: number;
 }
 
-// 후보의 유사군 코드 추출 (domain 타입 필드 또는 Prisma relation 객체 모두 지원)
-function getSimilarityCode(candidate: GoodsCandidate): string | undefined {
-  if (candidate.similarityGroupCodes?.[0]) return candidate.similarityGroupCodes[0];
+function uniqueStrings(values: Array<string | undefined | null>): string[] {
+  return Array.from(
+    new Set(values.map((value) => value?.trim()).filter((value): value is string => !!value))
+  );
+}
+
+function getSimilarityCodes(candidate: GoodsCandidate): string[] {
+  const directCodes = candidate.similarityGroupCodes ?? [];
   const groups = (candidate as any).similarityGroups as
     | Array<{ similarityGroupCode: string; isPrimary?: boolean }>
     | undefined;
-  if (!groups || groups.length === 0) return undefined;
-  // isPrimary 코드 우선, 없으면 첫 번째
-  return (groups.find((g) => g.isPrimary) ?? groups[0]).similarityGroupCode;
+  if (!groups || groups.length === 0) return uniqueStrings(directCodes).slice(0, 3);
+
+  const primary = groups.find((g) => g.isPrimary)?.similarityGroupCode;
+  const relationCodes = groups.map((g) => g.similarityGroupCode);
+  return uniqueStrings([primary, ...directCodes, ...relationCodes]).slice(0, 3);
 }
 
-function getSearchResultSimilarityCodes(result: any): string[] {
-  if (Array.isArray(result.similarityGroupCodes)) return result.similarityGroupCodes;
-  if (Array.isArray(result.rawResponse?.similarityCodes)) return result.rawResponse.similarityCodes;
-  return [];
+function getSearchResultSimilarityCodes(
+  result: any,
+  searchReq?: TrademarkSearchRequest
+): string[] {
+  if (Array.isArray(result.similarityGroupCodes) && result.similarityGroupCodes.length > 0) {
+    return uniqueStrings(result.similarityGroupCodes);
+  }
+
+  return uniqueStrings([
+    ...(Array.isArray(result.rawResponse?.similarityCodes) ? result.rawResponse.similarityCodes : []),
+    result.rawResponse?.querySimilarityGroupCode,
+    searchReq?.params.similarityGroupCode,
+  ]);
 }
 
-// 후보 1개에 대해 실행할 검색 요청 목록 생성
+function buildKiprisTrademarkUrl(applicationNumber?: string, markName?: string): string {
+  if (applicationNumber) {
+    return `https://doi.kipris.or.kr/kdoi/searchKdoiInfoReadView.do?applno=${encodeURIComponent(applicationNumber)}`;
+  }
+  if (markName) {
+    return `https://www.kipris.or.kr/khome/search/searchResult.do?tab=trademark&query=${encodeURIComponent(markName)}`;
+  }
+  return "https://www.kipris.or.kr/khome/search/searchResult.do?tab=trademark";
+}
+
+function buildSearchBasis(
+  searchReq: TrademarkSearchRequest,
+  candidate: GoodsCandidate,
+  result: SearchResult,
+  markName: string
+): string {
+  const classLabel = candidate.classNo ? `제${String(candidate.classNo).padStart(2, "0")}류` : "해당 류";
+  const score = result.relevanceScore !== undefined
+    ? ` 표장명 유사도는 약 ${Math.round(result.relevanceScore * 100)}%입니다.`
+    : "";
+
+  if (searchReq.mode === "similarity_group") {
+    return `${classLabel} 후보 "${candidate.term}"의 유사군 코드 ${searchReq.params.similarityGroupCode} 범위에서 정규화 상표명 "${markName}"을 KIPRIS로 조회한 결과입니다.${score}`;
+  }
+  if (searchReq.mode === "exact_mark") {
+    return `${classLabel}에서 정규화 상표명 "${markName}"과 동일 표장 검색으로 확인한 KIPRIS 결과입니다.${score}`;
+  }
+  if (searchReq.mode === "mark_keyword") {
+    return `${classLabel}에서 정규화 상표명 "${markName}"을 키워드로 확장 조회한 KIPRIS 결과입니다.${score}`;
+  }
+  if (searchReq.mode === "designated_goods") {
+    return `${classLabel} 후보 지정상품 "${candidate.normalizedTerm ?? candidate.term}"을 기준으로 KIPRIS 지정상품 검색에서 확인한 결과입니다.${score}`;
+  }
+  return `${classLabel} 후보 "${candidate.term}"과 정규화 상표명 "${markName}"을 기준으로 확인한 KIPRIS 결과입니다.${score}`;
+}
+
 function buildSearchRequests(candidate: GoodsCandidate, markName: string): TrademarkSearchRequest[] {
   const requests: TrademarkSearchRequest[] = [];
+  const goodsKeyword = candidate.normalizedTerm?.trim() || candidate.term;
 
-  // 1) 정확 상표명 검색 (항상 실행)
+  for (const simCode of getSimilarityCodes(candidate)) {
+    requests.push({
+      sourceSystem: "kipris",
+      mode: "similarity_group",
+      params: {
+        markName,
+        similarityGroupCode: simCode,
+        classNo: candidate.classNo,
+        goodsDescription: goodsKeyword,
+      },
+    });
+  }
+
   if (markName) {
     requests.push({
       sourceSystem: "kipris",
@@ -56,18 +120,6 @@ function buildSearchRequests(candidate: GoodsCandidate, markName: string): Trade
     });
   }
 
-  // 2) 유사군 코드 검색 (코드가 있는 경우에만)
-  const simCode = getSimilarityCode(candidate);
-  if (simCode) {
-    requests.push({
-      sourceSystem: "kipris",
-      mode: "similarity_group",
-      params: { similarityGroupCode: simCode, classNo: candidate.classNo },
-    });
-  }
-
-  // 3) 지정상품 키워드 검색 (항상 실행 — normalizedTerm 우선)
-  const goodsKeyword = candidate.normalizedTerm?.trim() || candidate.term;
   requests.push({
     sourceSystem: "kipris",
     mode: "designated_goods",
@@ -101,12 +153,10 @@ export class SearchExecuteWorkflow {
         );
       }
 
-      // Update search job state to running
       await this.repositories.searchJobs.update(searchJob.id, {
         state: "running",
       });
 
-      // 선택된 후보 우선, 없으면 전체 후보 폴백 (isSelected 미설정 상태 대응)
       let candidates: GoodsCandidate[] = [];
       if (searchJob.candidateRunId) {
         candidates = await this.repositories.candidates.findSelectedByRun(
@@ -127,7 +177,6 @@ export class SearchExecuteWorkflow {
         );
       }
 
-      // 최대 5개 후보 × 최대 4개 모드 = 최대 20 API 호출 (KIPRIS 월 1,000건 한도 내)
       const [inquiry, parsedRequest] = await Promise.all([
         this.repositories.inquiries.findById(searchJob.inquiryId),
         prisma.parsedRequest.findFirst({
@@ -141,8 +190,6 @@ export class SearchExecuteWorkflow {
 
       const searchCandidates = candidates.slice(0, 5);
       const allResults: any[] = [];
-
-      // 중복 방지: searchJobId 내에서 동일 applicationNumber가 이미 저장된 경우 스킵
       const storedAppNumbers = new Set<string>();
 
       for (const candidate of searchCandidates) {
@@ -154,17 +201,25 @@ export class SearchExecuteWorkflow {
             searchResults = await request.searchPort.search(searchReq);
           } catch (err) {
             console.warn(
-              `[SearchExecuteWorkflow] 검색 실패 (mode=${searchReq.mode}, candidate=${candidate.term}):`,
+              `[SearchExecuteWorkflow] search failed (mode=${searchReq.mode}, candidate=${candidate.term}):`,
               err
             );
-            continue; // 한 모드가 실패해도 나머지 모드는 계속 실행
+            continue;
           }
 
           for (const result of searchResults) {
-            // 같은 출원번호는 동일 Job 내에서 중복 저장하지 않음
             const dedupKey = result.applicationNumber ?? `${result.markName}::${result.applicantName}`;
             if (storedAppNumbers.has(dedupKey)) continue;
             storedAppNumbers.add(dedupKey);
+
+            const similarityGroupCodes = getSearchResultSimilarityCodes(result, searchReq);
+            const kiprisUrl = buildKiprisTrademarkUrl(result.applicationNumber, result.markName);
+            const searchBasis = buildSearchBasis(
+              searchReq,
+              candidate,
+              result as SearchResult,
+              searchMarkName
+            );
 
             const storedResult = await prisma.searchResult.create({
               data: {
@@ -180,11 +235,25 @@ export class SearchExecuteWorkflow {
                 statusLabel: result.statusLabel,
                 sampleImageUrl: result.sampleImageUrl,
                 relevanceScore: result.relevanceScore,
-                detailJson: result.rawResponse,
+                detailJson: {
+                  ...(result.rawResponse ?? {}),
+                  queryContext: {
+                    mode: searchReq.mode,
+                    normalizedMarkName: searchMarkName,
+                    candidateTerm: candidate.term,
+                    normalizedCandidateTerm: candidate.normalizedTerm,
+                    classNo: candidate.classNo,
+                    similarityGroupCode: searchReq.params.similarityGroupCode,
+                    goodsDescription: searchReq.params.goodsDescription,
+                  },
+                  similarityCodes: similarityGroupCodes,
+                  searchBasis,
+                  kiprisUrl,
+                },
                 rawXml: result.rawXml,
               },
             });
-            const similarityGroupCodes = getSearchResultSimilarityCodes(result);
+
             if (similarityGroupCodes.length > 0) {
               await prisma.searchResultSimilarityGroup.createMany({
                 data: similarityGroupCodes.map((similarityGroupCode) => ({
@@ -198,13 +267,11 @@ export class SearchExecuteWorkflow {
         }
       }
 
-      // Update search job state to done
       await this.repositories.searchJobs.update(searchJob.id, {
         state: "done",
         completedAt: new Date(),
       });
 
-      // Update inquiry status
       await this.repositories.inquiries.update(searchJob.inquiryId, {
         status: "searched",
       });

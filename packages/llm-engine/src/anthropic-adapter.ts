@@ -266,6 +266,9 @@ function topSearchResults(request: ReportGenerationRequest) {
     statusLabel: result.statusLabel ?? '',
     designatedGoodsSummary: result.designatedGoodsSummary ?? '',
     similarityGroupCodes: result.similarityGroupCodes ?? [],
+    mode: result.mode ?? '',
+    searchBasis: result.searchBasis ?? '',
+    kiprisUrl: result.kiprisUrl ?? '',
     relevanceScore:
       result.relevanceScore !== undefined ? Math.round(result.relevanceScore * 100) + '%' : '미산출',
   }));

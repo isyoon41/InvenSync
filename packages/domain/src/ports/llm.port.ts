@@ -93,6 +93,9 @@ export interface ReportGenerationRequest {
     classNo?: number;
     designatedGoodsSummary?: string;
     similarityGroupCodes?: string[];
+    mode?: string;
+    searchBasis?: string;
+    kiprisUrl?: string;
   }>;
   candidateGoods?: Array<{
     term: string;

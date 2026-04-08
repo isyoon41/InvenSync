@@ -188,15 +188,18 @@ export class KiprisAdapter implements ITrademarkSearchPort {
   }
 
   private async searchBySimilarityGroup(request: TrademarkSearchRequest): Promise<TrademarkSearchResponse[]> {
-    const { similarityGroupCode, classNo } = request.params;
+    const { similarityGroupCode, classNo, markName } = request.params;
     if (!similarityGroupCode) return [];
 
     const params: Record<string, string> = {
       similarityCode: similarityGroupCode,
       pageNo: '1',
-      numOfRows: '20',
+      numOfRows: '50',
       accessKey: this.accessKey,
     };
+    if (markName) {
+      params.serviceName = markName;
+    }
     if (classNo !== undefined) {
       params.ClassNo = String(classNo).padStart(2, '0');
     }
@@ -208,19 +211,38 @@ export class KiprisAdapter implements ITrademarkSearchPort {
     const parsed = parseKiprisXml(xml);
     if (parsed.resultCode !== '00') return [];
 
-    return parsed.items.map((item) => ({
-      applicationNumber: item.applicationNumber || undefined,
-      registerNumber: item.registerNumber || undefined,
-      markName: item.trademarkName || '',
-      applicantName: item.applicantName || undefined,
-      classNo: item.classificationCode ? parseInt(item.classificationCode, 10) : undefined,
-      designatedGoodsSummary: item.designatedGoods || undefined,
-      statusLabel: item.applicationStatus || undefined,
-      sampleImageUrl: item.drawing || undefined,
-      relevanceScore: undefined,
-      rawResponse: { ...item },
-      rawXml: xml,
-    }));
+    const queryMark = typeof markName === 'string' ? markName : '';
+    const results = parsed.items
+      .map((item) => {
+        const resultMark = item.trademarkName || '';
+        const similarityGroupCodes = item.similarityCodes.length > 0
+          ? item.similarityCodes
+          : [String(similarityGroupCode)];
+        return {
+          applicationNumber: item.applicationNumber || undefined,
+          registerNumber: item.registerNumber || undefined,
+          markName: resultMark,
+          applicantName: item.applicantName || undefined,
+          classNo: item.classificationCode ? parseInt(item.classificationCode, 10) : undefined,
+          designatedGoodsSummary: item.designatedGoods || undefined,
+          statusLabel: item.applicationStatus || undefined,
+          sampleImageUrl: item.drawing || undefined,
+          relevanceScore: queryMark ? computeRelevance(queryMark, resultMark) : undefined,
+          similarityGroupCodes,
+          rawResponse: {
+            ...item,
+            queryMarkName: queryMark,
+            querySimilarityGroupCode: similarityGroupCode,
+          },
+          rawXml: xml,
+        };
+      })
+      .sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+
+    if (!queryMark) return results.slice(0, 20);
+
+    const likelyMatches = results.filter((result) => (result.relevanceScore ?? 0) >= 0.45);
+    return (likelyMatches.length > 0 ? likelyMatches : results.slice(0, 5)).slice(0, 20);
   }
 
   private async searchByDesignatedGoods(request: TrademarkSearchRequest): Promise<TrademarkSearchResponse[]> {

@@ -31,6 +31,24 @@ function getCandidateSimilarityCodes(candidate: any): string[] {
   return [];
 }
 
+function getSearchResultSimilarityCodes(result: any): string[] | undefined {
+  const relationCodes = Array.isArray(result.similarityGroups)
+    ? result.similarityGroups
+        .map((group: { similarityGroupCode?: string }) => group.similarityGroupCode)
+        .filter((code: unknown): code is string => typeof code === "string" && code.length > 0)
+    : [];
+  const detailCodes = Array.isArray(result.detailJson?.similarityCodes)
+    ? result.detailJson.similarityCodes.filter((code: unknown): code is string => typeof code === "string" && code.length > 0)
+    : [];
+  const codes = Array.from(new Set([...relationCodes, ...detailCodes]));
+  return codes.length > 0 ? codes : undefined;
+}
+
+function readDetailString(result: any, key: string): string | undefined {
+  const value = result.detailJson?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+}
+
 export class ReportGenerateWorkflow {
   constructor(private repositories = getRepositoryContainer()) {}
 
@@ -84,13 +102,10 @@ export class ReportGenerateWorkflow {
           registerNumber: r.registerNumber ?? undefined,
           classNo: r.classNo ?? undefined,
           designatedGoodsSummary: r.designatedGoodsSummary ?? undefined,
-          similarityGroupCodes: Array.isArray((r as any).similarityGroupCodes)
-            ? (r as any).similarityGroupCodes
-            : Array.isArray((r as any).similarityGroups)
-              ? (r as any).similarityGroups
-                  .map((group: { similarityGroupCode?: string }) => group.similarityGroupCode)
-                  .filter((code: unknown): code is string => typeof code === "string" && code.length > 0)
-              : undefined,
+          similarityGroupCodes: getSearchResultSimilarityCodes(r),
+          mode: (r as any).mode,
+          searchBasis: readDetailString(r, "searchBasis"),
+          kiprisUrl: readDetailString(r, "kiprisUrl"),
         })),
         candidateGoods: candidateGoods.map((candidate) => ({
           term: candidate.term,

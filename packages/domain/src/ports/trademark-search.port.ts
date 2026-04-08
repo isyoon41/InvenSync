@@ -23,6 +23,7 @@ export interface TrademarkSearchResponse {
   statusLabel?: string;
   sampleImageUrl?: string;
   relevanceScore?: number;
+  similarityGroupCodes?: string[];
   rawResponse?: Record<string, any>;
   rawXml?: string;
 }
