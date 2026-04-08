@@ -11,6 +11,8 @@ import type {
   ParsedNormalizedGood,
   CandidateGenerationRequest,
   GeneratedCandidate,
+  TrademarkSearchTermRequest,
+  TrademarkSearchTermStrategy,
   ReportGenerationRequest,
   GeneratedReport,
 } from '@ip-review/domain';
@@ -300,6 +302,21 @@ function candidateReferenceGoods(request: CandidateGenerationRequest) {
   }));
 }
 
+function asExcludedTerms(value: unknown): TrademarkSearchTermStrategy['excludedTerms'] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!isRecord(item)) return null;
+      const term = asString(item.term);
+      if (!term) return null;
+      return {
+        term,
+        reason: asString(item.reason, '식별력 또는 검색 필요성 판단에 따라 제외'),
+      };
+    })
+    .filter((item): item is TrademarkSearchTermStrategy['excludedTerms'][number] => item !== null);
+}
+
 export class AnthropicLLMAdapter implements ILLMPort {
   constructor(
     private readonly apiKey: string,
@@ -379,6 +396,68 @@ ${request.senderEmail ?? '미기재'}`,
       confidence: asNumber(parsed.confidence, 0.7),
       missingFields: asStringArray(parsed.missingFields),
       reasoning: asString(parsed.reasoning, '고객 요청 내용 기준으로 추출'),
+    };
+  }
+
+  async deriveTrademarkSearchTerms(
+    request: TrademarkSearchTermRequest
+  ): Promise<TrademarkSearchTermStrategy> {
+    const normalizedMarkName = request.normalizedMarkName.trim();
+    const parsed = await this.completeJson(
+      `당신은 한국 상표 선행상표 검색 전략을 세우는 변리사입니다.
+
+아래 정규화 상표명을 그대로 검색하지 말고, 상표 구성 중 식별력 있는 핵심 부분을 판단해 KIPRIS 검색어를 정하세요.
+반드시 JSON 객체만 출력하세요.
+
+출력 형식:
+{
+  "originalMarkName": "DX-Newton",
+  "primarySearchTerm": "Newton",
+  "alternativeSearchTerms": ["뉴턴", "DX-Newton"],
+  "excludedTerms": [
+    { "term": "DX", "reason": "digital transformation의 약어로 상품·서비스 성격을 암시하는 형용사적/기술적 요소" }
+  ],
+  "reasoning": "검색어 선정 이유",
+  "confidence": 0.0
+}
+
+판단 기준:
+- primarySearchTerm은 KIPRIS 유사상표 검색에서 가장 먼저 사용할 핵심 식별 표장입니다.
+- "AI", "DX", "XR", "VR", "AR", "IT", "SaaS", "Cloud", "Robot", "NPU", "SDK", "ROS"처럼 상품·기술 분야를 설명하거나 약하게 식별되는 접두/접미 요소는 필요하면 제외하세요.
+- 단, 제외한 약어 자체가 조어적이거나 고객 상표의 핵심 식별 부분이면 제외하지 마세요.
+- 결합상표의 전체 인상 확인을 위해 alternativeSearchTerms에는 원문 또는 전체 표장을 1개 이상 포함할 수 있습니다.
+- 영문 표장은 한글 음역이 실무상 유용하면 alternativeSearchTerms에 추가하세요.
+- primarySearchTerm은 빈 문자열이면 안 됩니다. 판단이 불확실하면 normalizedMarkName 전체를 사용하세요.
+
+[정규화 상표명]
+${normalizedMarkName}
+
+[제안/원문 상표명]
+${request.proposedMarkName ?? ''}
+
+[상품·서비스 설명]
+${request.goodsDescription ?? ''}
+
+[대상 류]
+${request.targetClasses?.join(', ') ?? ''}
+
+[정규화 지정상품/지정서비스업]
+${JSON.stringify(request.normalizedGoods ?? [], null, 2)}`,
+      1200
+    );
+
+    const primarySearchTerm = asString(parsed.primarySearchTerm, normalizedMarkName).trim() || normalizedMarkName;
+    const alternatives = asStringArray(parsed.alternativeSearchTerms)
+      .map((term) => term.trim())
+      .filter((term) => term.length > 0 && term !== primarySearchTerm);
+
+    return {
+      originalMarkName: asString(parsed.originalMarkName, normalizedMarkName),
+      primarySearchTerm,
+      alternativeSearchTerms: Array.from(new Set(alternatives)).slice(0, 4),
+      excludedTerms: asExcludedTerms(parsed.excludedTerms),
+      reasoning: asString(parsed.reasoning, '정규화 상표명에서 식별력 있는 핵심 부분을 기준으로 검색어를 선정했습니다.'),
+      confidence: asNumber(parsed.confidence, 0.75),
     };
   }
 

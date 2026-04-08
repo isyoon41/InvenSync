@@ -1,8 +1,11 @@
 import type {
+  ILLMPort,
   ITrademarkSearchPort,
   SearchResult,
   GoodsCandidate,
+  ParsedNormalizedGood,
   TrademarkSearchRequest,
+  TrademarkSearchTermStrategy,
 } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
@@ -11,6 +14,7 @@ import { prisma } from "@ip-review/db";
 export interface SearchExecuteRequest {
   searchJobId: string;
   searchPort: ITrademarkSearchPort;
+  llmPort: ILLMPort;
   candidateIds?: string[];
 }
 
@@ -68,54 +72,78 @@ function buildSearchBasis(
   searchReq: TrademarkSearchRequest,
   candidate: GoodsCandidate,
   result: SearchResult,
-  markName: string
+  strategy: TrademarkSearchTermStrategy
 ): string {
   const classLabel = candidate.classNo ? `제${String(candidate.classNo).padStart(2, "0")}류` : "해당 류";
+  const searchedTerm = String(searchReq.params.markName ?? strategy.primarySearchTerm);
   const score = result.relevanceScore !== undefined
     ? ` 표장명 유사도는 약 ${Math.round(result.relevanceScore * 100)}%입니다.`
     : "";
+  const exclusion = strategy.excludedTerms.length > 0
+    ? ` 제외 요소: ${strategy.excludedTerms.map((item) => `${item.term}(${item.reason})`).join(", ")}.`
+    : "";
 
   if (searchReq.mode === "similarity_group") {
-    return `${classLabel} 후보 "${candidate.term}"의 유사군 코드 ${searchReq.params.similarityGroupCode} 범위에서 정규화 상표명 "${markName}"을 KIPRIS로 조회한 결과입니다.${score}`;
+    return `${classLabel} 후보 "${candidate.term}"의 유사군 코드 ${searchReq.params.similarityGroupCode} 범위에서, Claude가 정규화 상표명 "${strategy.originalMarkName}" 중 식별력 있는 핵심 검색어를 "${searchedTerm}"으로 판단해 KIPRIS로 조회한 결과입니다.${exclusion}${score}`;
   }
   if (searchReq.mode === "exact_mark") {
-    return `${classLabel}에서 정규화 상표명 "${markName}"과 동일 표장 검색으로 확인한 KIPRIS 결과입니다.${score}`;
+    return `${classLabel}에서 Claude가 선정한 검색어 "${searchedTerm}"과 동일 표장 검색으로 확인한 KIPRIS 결과입니다.${exclusion}${score}`;
   }
   if (searchReq.mode === "mark_keyword") {
-    return `${classLabel}에서 정규화 상표명 "${markName}"을 키워드로 확장 조회한 KIPRIS 결과입니다.${score}`;
+    return `${classLabel}에서 Claude가 선정한 검색어 "${searchedTerm}"을 키워드로 확장 조회한 KIPRIS 결과입니다.${exclusion}${score}`;
   }
   if (searchReq.mode === "designated_goods") {
     return `${classLabel} 후보 지정상품 "${candidate.normalizedTerm ?? candidate.term}"을 기준으로 KIPRIS 지정상품 검색에서 확인한 결과입니다.${score}`;
   }
-  return `${classLabel} 후보 "${candidate.term}"과 정규화 상표명 "${markName}"을 기준으로 확인한 KIPRIS 결과입니다.${score}`;
+  return `${classLabel} 후보 "${candidate.term}"과 Claude 검색어 "${searchedTerm}"을 기준으로 확인한 KIPRIS 결과입니다.${score}`;
 }
 
-function buildSearchRequests(candidate: GoodsCandidate, markName: string): TrademarkSearchRequest[] {
+function buildSearchRequests(
+  candidate: GoodsCandidate,
+  strategy: TrademarkSearchTermStrategy
+): TrademarkSearchRequest[] {
   const requests: TrademarkSearchRequest[] = [];
   const goodsKeyword = candidate.normalizedTerm?.trim() || candidate.term;
+  const primaryTerm = compactSearchMark(strategy.primarySearchTerm || strategy.originalMarkName);
+  const alternativeTerms = uniqueStrings(strategy.alternativeSearchTerms)
+    .filter((term) => term !== primaryTerm)
+    .slice(0, 2);
+  const markTerms = uniqueStrings([primaryTerm, ...alternativeTerms]).slice(0, 3);
 
   for (const simCode of getSimilarityCodes(candidate)) {
-    requests.push({
-      sourceSystem: "kipris",
-      mode: "similarity_group",
-      params: {
-        markName,
-        similarityGroupCode: simCode,
-        classNo: candidate.classNo,
-        goodsDescription: goodsKeyword,
-      },
-    });
+    for (const [index, markName] of markTerms.entries()) {
+      requests.push({
+        sourceSystem: "kipris",
+        mode: "similarity_group",
+        params: {
+          markName,
+          originalMarkName: strategy.originalMarkName,
+          searchTermRole: index === 0 ? "primary" : "alternative",
+          similarityGroupCode: simCode,
+          classNo: candidate.classNo,
+          goodsDescription: goodsKeyword,
+        },
+      });
+    }
   }
 
-  if (markName) {
+  if (primaryTerm) {
     requests.push({
       sourceSystem: "kipris",
       mode: "exact_mark",
-      params: { markName, classNo: candidate.classNo },
+      params: { markName: primaryTerm, classNo: candidate.classNo },
     });
     requests.push({
       sourceSystem: "kipris",
       mode: "mark_keyword",
+      params: { markName: primaryTerm, classNo: candidate.classNo },
+    });
+  }
+
+  for (const markName of alternativeTerms.slice(0, 1)) {
+    requests.push({
+      sourceSystem: "kipris",
+      mode: "exact_mark",
       params: { markName, classNo: candidate.classNo },
     });
   }
@@ -131,6 +159,49 @@ function buildSearchRequests(candidate: GoodsCandidate, markName: string): Trade
 
 function compactSearchMark(value?: string | null): string {
   return (value ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+}
+
+function normalizeTargetClasses(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item >= 1 && item <= 45);
+}
+
+function normalizeParsedGoods(value: unknown): ParsedNormalizedGood[] {
+  if (!Array.isArray(value)) return [];
+  const goods: ParsedNormalizedGood[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) continue;
+    const row = item as Record<string, unknown>;
+    const classNo = Number(row.classNo);
+    const term = typeof row.term === "string" ? row.term.trim() : "";
+    if (!Number.isInteger(classNo) || classNo < 1 || classNo > 45 || !term) continue;
+    goods.push({
+      classNo,
+      term,
+      kind: row.kind === "service" ? "service" : "goods",
+      basis: typeof row.basis === "string" ? row.basis : undefined,
+      evidenceLabel: typeof row.evidenceLabel === "string" ? row.evidenceLabel : undefined,
+      evidenceUrl: typeof row.evidenceUrl === "string" ? row.evidenceUrl : undefined,
+    });
+  }
+  return goods;
+}
+
+function normalizeSearchStrategy(
+  strategy: TrademarkSearchTermStrategy,
+  fallbackMarkName: string
+): TrademarkSearchTermStrategy {
+  const primarySearchTerm = compactSearchMark(strategy.primarySearchTerm || fallbackMarkName);
+  return {
+    originalMarkName: compactSearchMark(strategy.originalMarkName || fallbackMarkName),
+    primarySearchTerm: primarySearchTerm || fallbackMarkName,
+    alternativeSearchTerms: uniqueStrings(strategy.alternativeSearchTerms).slice(0, 4),
+    excludedTerms: Array.isArray(strategy.excludedTerms) ? strategy.excludedTerms : [],
+    reasoning: strategy.reasoning || "Claude가 상표 구성 중 식별력 있는 핵심 부분을 기준으로 검색어를 선정했습니다.",
+    confidence: Number.isFinite(strategy.confidence) ? strategy.confidence : 0.7,
+  };
 }
 
 export class SearchExecuteWorkflow {
@@ -184,8 +255,21 @@ export class SearchExecuteWorkflow {
           orderBy: { createdAt: "desc" },
         }),
       ]);
-      const searchMarkName = compactSearchMark(
+      const normalizedMarkName = compactSearchMark(
         parsedRequest?.markNameNormalized || inquiry?.proposedMarkName || inquiry?.title
+      );
+      const parsedJson = (parsedRequest?.parsedJson ?? {}) as Record<string, unknown>;
+      const targetClasses = normalizeTargetClasses(parsedJson.targetClasses);
+      const normalizedGoods = normalizeParsedGoods(parsedJson.normalizedGoods);
+      const strategy = normalizeSearchStrategy(
+        await request.llmPort.deriveTrademarkSearchTerms({
+          normalizedMarkName,
+          proposedMarkName: inquiry?.proposedMarkName ?? undefined,
+          goodsDescription: parsedRequest?.goodsDescriptionNormalized ?? inquiry?.rawText ?? undefined,
+          targetClasses,
+          normalizedGoods,
+        }),
+        normalizedMarkName
       );
 
       const searchCandidates = candidates.slice(0, 5);
@@ -193,7 +277,7 @@ export class SearchExecuteWorkflow {
       const storedAppNumbers = new Set<string>();
 
       for (const candidate of searchCandidates) {
-        const searchRequests = buildSearchRequests(candidate, searchMarkName);
+        const searchRequests = buildSearchRequests(candidate, strategy);
 
         for (const searchReq of searchRequests) {
           let searchResults;
@@ -218,7 +302,7 @@ export class SearchExecuteWorkflow {
               searchReq,
               candidate,
               result as SearchResult,
-              searchMarkName
+              strategy
             );
 
             const storedResult = await prisma.searchResult.create({
@@ -239,17 +323,20 @@ export class SearchExecuteWorkflow {
                   ...(result.rawResponse ?? {}),
                   queryContext: {
                     mode: searchReq.mode,
-                    normalizedMarkName: searchMarkName,
+                    normalizedMarkName,
+                    claudePrimarySearchTerm: strategy.primarySearchTerm,
+                    searchedMarkName: searchReq.params.markName,
                     candidateTerm: candidate.term,
                     normalizedCandidateTerm: candidate.normalizedTerm,
                     classNo: candidate.classNo,
                     similarityGroupCode: searchReq.params.similarityGroupCode,
                     goodsDescription: searchReq.params.goodsDescription,
                   },
+                  trademarkSearchStrategy: strategy,
                   similarityCodes: similarityGroupCodes,
                   searchBasis,
                   kiprisUrl,
-                },
+                } as any,
                 rawXml: result.rawXml,
               },
             });

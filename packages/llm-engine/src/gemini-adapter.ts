@@ -15,6 +15,8 @@ import type {
   ParsedInquiryData,
   CandidateGenerationRequest,
   GeneratedCandidate,
+  TrademarkSearchTermRequest,
+  TrademarkSearchTermStrategy,
   ReportGenerationRequest,
   GeneratedReport,
 } from '@ip-review/domain';
@@ -56,6 +58,24 @@ export class GeminiLLMAdapter implements ILLMPort {
   // ─────────────────────────────────────────────
   // 1단계: 의뢰 정규화 (parseInquiry)
   // ─────────────────────────────────────────────
+  async deriveTrademarkSearchTerms(
+    request: TrademarkSearchTermRequest
+  ): Promise<TrademarkSearchTermStrategy> {
+    const markName = (request.normalizedMarkName || request.proposedMarkName || '').trim();
+    const parts = markName.split(/[-_\s]+/).filter(Boolean);
+    const primarySearchTerm = parts.length > 1 ? parts.at(-1) ?? markName : markName;
+    return {
+      originalMarkName: markName,
+      primarySearchTerm,
+      alternativeSearchTerms: markName && markName !== primarySearchTerm ? [markName] : [],
+      excludedTerms: markName && markName !== primarySearchTerm
+        ? [{ term: parts.slice(0, -1).join('-'), reason: 'Gemini fallback descriptor split' }]
+        : [],
+      reasoning: 'Gemini fallback: 결합상표의 마지막 구성요소를 검색 핵심어로 사용했습니다.',
+      confidence: 0.45,
+    };
+  }
+
   async parseInquiry(request: LLMParseRequest): Promise<ParsedInquiryData> {
     const config: GenerationConfig = {
       responseMimeType: 'application/json',

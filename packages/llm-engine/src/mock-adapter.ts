@@ -9,6 +9,8 @@ import type {
   ParsedInquiryData,
   CandidateGenerationRequest,
   GeneratedCandidate,
+  TrademarkSearchTermRequest,
+  TrademarkSearchTermStrategy,
   ReportGenerationRequest,
   GeneratedReport,
 } from '@ip-review/domain';
@@ -58,6 +60,24 @@ export class MockLLMAdapter implements ILLMPort {
         rationale: `${request.proposedMarkName} 관련 주변 상품`,
       },
     ];
+  }
+
+  async deriveTrademarkSearchTerms(
+    request: TrademarkSearchTermRequest
+  ): Promise<TrademarkSearchTermStrategy> {
+    const markName = request.normalizedMarkName || request.proposedMarkName || '';
+    const parts = markName.split(/[-_\s]+/).filter(Boolean);
+    const primarySearchTerm = parts.length > 1 ? parts.at(-1) ?? markName : markName;
+    return {
+      originalMarkName: markName,
+      primarySearchTerm,
+      alternativeSearchTerms: markName !== primarySearchTerm ? [markName] : [],
+      excludedTerms: markName !== primarySearchTerm
+        ? [{ term: parts.slice(0, -1).join('-'), reason: 'mock descriptor split' }]
+        : [],
+      reasoning: '[Mock] 결합상표에서 마지막 구성요소를 핵심 검색어로 사용했습니다.',
+      confidence: 0.5,
+    };
   }
 
   async generateReport(request: ReportGenerationRequest): Promise<GeneratedReport> {

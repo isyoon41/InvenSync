@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRepositoryContainer, prisma } from '@ip-review/db';
 import { SearchExecuteWorkflow } from '@ip-review/workflows';
 import { createKiprisOnlyTrademarkSearchPort } from '@ip-review/kipris-client';
+import { createClaudeOnlyLLMPort } from '@ip-review/llm-engine';
 
 /**
  * POST /api/search-jobs
@@ -78,12 +79,14 @@ export async function POST(request: NextRequest) {
 
     // 검색 포트 생성 (환경변수 기반으로 실제/목 선택)
     const searchPort = createKiprisOnlyTrademarkSearchPort();
+    const llmPort = createClaudeOnlyLLMPort();
 
     // 검색 워크플로우 실행
     const workflow = new SearchExecuteWorkflow();
     const result = await workflow.execute({
       searchJobId: searchJob.id,
       searchPort,
+      llmPort,
     });
 
     return NextResponse.json({

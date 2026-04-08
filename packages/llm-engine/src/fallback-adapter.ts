@@ -6,6 +6,8 @@ import type {
   LLMParseRequest,
   ParsedInquiryData,
   ReportGenerationRequest,
+  TrademarkSearchTermRequest,
+  TrademarkSearchTermStrategy,
 } from '@ip-review/domain';
 
 const TRANSIENT_ERROR_PATTERNS = [
@@ -59,6 +61,18 @@ export class FallbackLLMAdapter implements ILLMPort {
       if (!isTransientProviderError(error)) throw error;
       this.logFallback('generateCandidates', error);
       return this.fallback.generateCandidates(request);
+    }
+  }
+
+  async deriveTrademarkSearchTerms(
+    request: TrademarkSearchTermRequest
+  ): Promise<TrademarkSearchTermStrategy> {
+    try {
+      return await this.primary.deriveTrademarkSearchTerms(request);
+    } catch (error) {
+      if (!isTransientProviderError(error)) throw error;
+      this.logFallback('deriveTrademarkSearchTerms', error);
+      return this.fallback.deriveTrademarkSearchTerms(request);
     }
   }
 

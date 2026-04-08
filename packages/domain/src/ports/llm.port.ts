@@ -80,6 +80,26 @@ export interface GeneratedCandidate {
   similarityGroupCodes?: string[];
 }
 
+export interface TrademarkSearchTermRequest {
+  normalizedMarkName: string;
+  proposedMarkName?: string;
+  goodsDescription?: string;
+  targetClasses?: number[];
+  normalizedGoods?: ParsedNormalizedGood[];
+}
+
+export interface TrademarkSearchTermStrategy {
+  originalMarkName: string;
+  primarySearchTerm: string;
+  alternativeSearchTerms: string[];
+  excludedTerms: Array<{
+    term: string;
+    reason: string;
+  }>;
+  reasoning: string;
+  confidence: number;
+}
+
 export interface ReportGenerationRequest {
   markName: string;
   goods: string;
@@ -131,6 +151,9 @@ export interface ILLMPort {
   generateCandidates(
     request: CandidateGenerationRequest
   ): Promise<GeneratedCandidate[]>;
+  deriveTrademarkSearchTerms(
+    request: TrademarkSearchTermRequest
+  ): Promise<TrademarkSearchTermStrategy>;
   generateReport(request: ReportGenerationRequest): Promise<GeneratedReport>;
   isAvailable(): Promise<boolean>;
 }

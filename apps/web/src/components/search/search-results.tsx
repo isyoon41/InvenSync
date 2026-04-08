@@ -16,11 +16,21 @@ type SearchResultWithDetails = SearchResult & {
     queryContext?: {
       mode?: string;
       normalizedMarkName?: string;
+      claudePrimarySearchTerm?: string;
+      searchedMarkName?: string;
       candidateTerm?: string;
       normalizedCandidateTerm?: string;
       classNo?: number;
       similarityGroupCode?: string;
       goodsDescription?: string;
+    };
+    trademarkSearchStrategy?: {
+      originalMarkName?: string;
+      primarySearchTerm?: string;
+      alternativeSearchTerms?: string[];
+      excludedTerms?: Array<{ term?: string; reason?: string }>;
+      reasoning?: string;
+      confidence?: number;
     };
     similarityCodes?: string[];
     [key: string]: unknown;
@@ -51,11 +61,11 @@ function getSimilarityGroupCodes(result: SearchResultWithDetails): string[] {
 function modeLabel(mode?: string): string {
   switch (mode) {
     case 'similarity_group':
-      return '유사군 내 상표명 검색';
+      return '유사군 내 핵심 표장 검색';
     case 'exact_mark':
-      return '동일 상표명 검색';
+      return '핵심 표장 동일 검색';
     case 'mark_keyword':
-      return '상표명 키워드 검색';
+      return '핵심 표장 키워드 검색';
     case 'designated_goods':
       return '지정상품 기준 검색';
     default:
@@ -67,13 +77,24 @@ function getSearchBasis(result: SearchResultWithDetails): string {
   if (result.detailJson?.searchBasis) return result.detailJson.searchBasis;
 
   const query = result.detailJson?.queryContext;
-  if (query?.similarityGroupCode && query?.normalizedMarkName) {
-    return `유사군 코드 ${query.similarityGroupCode} 범위에서 정규화 상표명 "${query.normalizedMarkName}"을 기준으로 확인한 KIPRIS 결과입니다.`;
+  if (query?.similarityGroupCode && query?.searchedMarkName) {
+    return `유사군 코드 ${query.similarityGroupCode} 범위에서 Claude가 선정한 핵심 검색어 "${query.searchedMarkName}"을 기준으로 확인한 KIPRIS 결과입니다.`;
   }
-  if (query?.normalizedMarkName) {
-    return `정규화 상표명 "${query.normalizedMarkName}"을 기준으로 확인한 KIPRIS 결과입니다.`;
+  if (query?.searchedMarkName) {
+    return `Claude가 선정한 핵심 검색어 "${query.searchedMarkName}"을 기준으로 확인한 KIPRIS 결과입니다.`;
   }
   return 'KIPRIS 상표 출원 속보 검색 결과를 바탕으로 표시한 참고 상표입니다.';
+}
+
+function excludedTermText(result: SearchResultWithDetails): string | null {
+  const excludedTerms = result.detailJson?.trademarkSearchStrategy?.excludedTerms ?? [];
+  const values = excludedTerms
+    .map((item) => {
+      if (!item.term) return null;
+      return item.reason ? `${item.term}: ${item.reason}` : item.term;
+    })
+    .filter((item): item is string => !!item);
+  return values.length > 0 ? values.join(' / ') : null;
 }
 
 export function SearchResults({ results, onToggleShortlist }: SearchResultsProps) {
@@ -89,7 +110,7 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
         <div>
           <h2 className="text-lg font-semibold text-gray-900">유사상표 검색 결과</h2>
           <p className="mt-1 text-sm text-gray-500">
-            지정상품 후보의 유사군 코드 범위에서 정규화 상표명을 KIPRIS로 조회한 결과입니다.
+            지정상품 후보의 유사군 코드 범위에서 Claude가 판단한 핵심 표장 검색어를 KIPRIS로 조회한 결과입니다.
           </p>
         </div>
         {results.length > 0 && (
@@ -109,6 +130,8 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
             const similarityGroupCodes = getSimilarityGroupCodes(result);
             const kiprisUrl = buildKiprisUrl(result);
             const query = result.detailJson?.queryContext;
+            const strategy = result.detailJson?.trademarkSearchStrategy;
+            const excluded = excludedTermText(result);
 
             return (
               <div key={result.id} className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-100">
@@ -150,6 +173,26 @@ export function SearchResults({ results, onToggleShortlist }: SearchResultsProps
                         />
                       )}
                     </div>
+
+                    {(query?.normalizedMarkName || query?.searchedMarkName || strategy?.primarySearchTerm) && (
+                      <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                          Claude 검색어 판단
+                        </p>
+                        <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-blue-900 md:grid-cols-2">
+                          {query?.normalizedMarkName && (
+                            <span>정규화 상표명: {query.normalizedMarkName}</span>
+                          )}
+                          {(query?.searchedMarkName || strategy?.primarySearchTerm) && (
+                            <span>실제 검색어: {query?.searchedMarkName ?? strategy?.primarySearchTerm}</span>
+                          )}
+                        </div>
+                        {excluded && <p className="mt-2 text-xs text-blue-700">제외 요소: {excluded}</p>}
+                        {strategy?.reasoning && (
+                          <p className="mt-2 text-xs leading-relaxed text-blue-700">{strategy.reasoning}</p>
+                        )}
+                      </div>
+                    )}
 
                     {similarityGroupCodes.length > 0 && (
                       <div className="mt-4">

@@ -67,6 +67,7 @@ export class InquiryOrchestrator {
       const searchResult = await this.searchWorkflow.execute({
         searchJobId: searchJob.id,
         searchPort,
+        llmPort,
       });
 
       if (searchResult.results.length === 0) {

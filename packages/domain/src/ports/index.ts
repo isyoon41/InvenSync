@@ -11,6 +11,8 @@ export type {
   CandidateGenerationRequest,
   CandidateReferenceGoods,
   GeneratedCandidate,
+  TrademarkSearchTermRequest,
+  TrademarkSearchTermStrategy,
   ReportGenerationRequest,
   GeneratedReport,
 } from "./llm.port";
