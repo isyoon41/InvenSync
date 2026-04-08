@@ -107,6 +107,54 @@ function SectionCard({ icon, title, accentColor, headerBg, children }: SectionPr
   );
 }
 
+function buildFullOpinionText(data: {
+  summary?: string;
+  riskNote?: string;
+  recommendation?: string;
+  clientReplyDraft?: string;
+}): string {
+  return [
+    '상표 출원 검토 의견서',
+    'TRADEMARK APPLICATION REVIEW OPINION',
+    data.summary,
+    data.riskNote,
+    data.recommendation,
+    data.clientReplyDraft ? `고객 회신 메일 초안\n\n${data.clientReplyDraft}` : '',
+  ]
+    .filter((section) => section && section.trim().length > 0)
+    .map((section) => normalizeNewlines(section ?? '').trim())
+    .join('\n\n');
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildWordHtml(opinionText: string): string {
+  const body = escapeHtml(opinionText)
+    .split(/\n\n+/)
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, '<br />')}</p>`)
+    .join('\n');
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>상표 출원 검토 의견서</title>
+  <style>
+    body { font-family: "Malgun Gothic", Arial, sans-serif; font-size: 11pt; line-height: 1.65; color: #111827; }
+    p { margin: 0 0 12pt; }
+  </style>
+</head>
+<body>${body}</body>
+</html>`;
+}
+
 /* ── Main Component ──────────────────────────────────────────── */
 export function ReviewReport({
   report,
@@ -124,6 +172,7 @@ export function ReviewReport({
     internalNote: normalizeNewlines(report.internalNote || ''),
   });
   const [copied, setCopied] = useState(false);
+  const [copiedOpinion, setCopiedOpinion] = useState(false);
 
   const handleCopyDraft = () => {
     const text = normalizeNewlines(report.clientReplyDraft || '');
@@ -131,6 +180,32 @@ export function ReviewReport({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const currentOpinionText = () => buildFullOpinionText({
+    summary: editMode ? formData.summary : report.summary || '',
+    riskNote: editMode ? formData.riskNote : report.riskNote || '',
+    recommendation: editMode ? formData.recommendation : report.recommendation || '',
+    clientReplyDraft: editMode ? formData.clientReplyDraft : report.clientReplyDraft || '',
+  });
+
+  const handleCopyOpinion = () => {
+    navigator.clipboard.writeText(currentOpinionText()).then(() => {
+      setCopiedOpinion(true);
+      setTimeout(() => setCopiedOpinion(false), 2000);
+    });
+  };
+
+  const handleDownloadOpinion = () => {
+    const blob = new Blob([buildWordHtml(currentOpinionText())], {
+      type: 'application/msword;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `trademark-review-opinion-${report.id}.doc`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleSave = () => {
@@ -180,6 +255,14 @@ export function ReviewReport({
           )}
         </div>
         <div className="flex gap-2">
+          <button onClick={handleCopyOpinion}
+            className="px-3.5 py-1.5 text-sm font-semibold bg-white text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+            {copiedOpinion ? '복사됨' : '의견서 복사'}
+          </button>
+          <button onClick={handleDownloadOpinion}
+            className="px-3.5 py-1.5 text-sm font-semibold bg-white text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+            Word 다운로드
+          </button>
           {editable && !isApproved && (
             editMode ? (
               <>

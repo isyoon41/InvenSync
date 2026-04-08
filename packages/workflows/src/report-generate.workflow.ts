@@ -81,7 +81,16 @@ export class ReportGenerateWorkflow {
           relevanceScore: r.relevanceScore ?? undefined,
           statusLabel: r.statusLabel ?? undefined,
           applicationNumber: r.applicationNumber ?? undefined,
+          registerNumber: r.registerNumber ?? undefined,
           classNo: r.classNo ?? undefined,
+          designatedGoodsSummary: r.designatedGoodsSummary ?? undefined,
+          similarityGroupCodes: Array.isArray((r as any).similarityGroupCodes)
+            ? (r as any).similarityGroupCodes
+            : Array.isArray((r as any).similarityGroups)
+              ? (r as any).similarityGroups
+                  .map((group: { similarityGroupCode?: string }) => group.similarityGroupCode)
+                  .filter((code: unknown): code is string => typeof code === "string" && code.length > 0)
+              : undefined,
         })),
         candidateGoods: candidateGoods.map((candidate) => ({
           term: candidate.term,

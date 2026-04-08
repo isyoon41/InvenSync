@@ -39,15 +39,22 @@ function getSearchResultSimilarityCodes(result: any): string[] {
 }
 
 // 후보 1개에 대해 실행할 검색 요청 목록 생성
-function buildSearchRequests(candidate: GoodsCandidate): TrademarkSearchRequest[] {
+function buildSearchRequests(candidate: GoodsCandidate, markName: string): TrademarkSearchRequest[] {
   const requests: TrademarkSearchRequest[] = [];
 
   // 1) 정확 상표명 검색 (항상 실행)
-  requests.push({
-    sourceSystem: "kipris",
-    mode: "exact_mark",
-    params: { markName: candidate.term, classNo: candidate.classNo },
-  });
+  if (markName) {
+    requests.push({
+      sourceSystem: "kipris",
+      mode: "exact_mark",
+      params: { markName, classNo: candidate.classNo },
+    });
+    requests.push({
+      sourceSystem: "kipris",
+      mode: "mark_keyword",
+      params: { markName, classNo: candidate.classNo },
+    });
+  }
 
   // 2) 유사군 코드 검색 (코드가 있는 경우에만)
   const simCode = getSimilarityCode(candidate);
@@ -68,6 +75,10 @@ function buildSearchRequests(candidate: GoodsCandidate): TrademarkSearchRequest[
   });
 
   return requests;
+}
+
+function compactSearchMark(value?: string | null): string {
+  return (value ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
 export class SearchExecuteWorkflow {
@@ -116,7 +127,18 @@ export class SearchExecuteWorkflow {
         );
       }
 
-      // 최대 5개 후보 × 최대 3개 모드 = 최대 15 API 호출 (KIPRIS 월 1,000건 한도 내)
+      // 최대 5개 후보 × 최대 4개 모드 = 최대 20 API 호출 (KIPRIS 월 1,000건 한도 내)
+      const [inquiry, parsedRequest] = await Promise.all([
+        this.repositories.inquiries.findById(searchJob.inquiryId),
+        prisma.parsedRequest.findFirst({
+          where: { inquiryId: searchJob.inquiryId, isCurrent: true },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
+      const searchMarkName = compactSearchMark(
+        parsedRequest?.markNameNormalized || inquiry?.proposedMarkName || inquiry?.title
+      );
+
       const searchCandidates = candidates.slice(0, 5);
       const allResults: any[] = [];
 
@@ -124,7 +146,7 @@ export class SearchExecuteWorkflow {
       const storedAppNumbers = new Set<string>();
 
       for (const candidate of searchCandidates) {
-        const searchRequests = buildSearchRequests(candidate);
+        const searchRequests = buildSearchRequests(candidate, searchMarkName);
 
         for (const searchReq of searchRequests) {
           let searchResults;

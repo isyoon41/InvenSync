@@ -138,10 +138,13 @@ export class RecommendGoodsEngine {
     request: CandidateGenerationRequest,
     limit: number
   ): Promise<CandidateReferenceGoods[]> {
-    const [officialTerms, similarTerms] = await Promise.all([
-      this.goodsTermPort.findOfficialMatches(request.goodsDescription, request.classNo),
-      this.goodsTermPort.findSimilarMatches(request.goodsDescription, request.classNo),
+    const classNos = classFilters(request);
+    const [officialTermGroups, similarTermGroups] = await Promise.all([
+      Promise.all(classNos.map((classNo) => this.goodsTermPort.findOfficialMatches(request.goodsDescription, classNo))),
+      Promise.all(classNos.map((classNo) => this.goodsTermPort.findSimilarMatches(request.goodsDescription, classNo))),
     ]);
+    const officialTerms = officialTermGroups.flat();
+    const similarTerms = similarTermGroups.flat();
 
     const queryText = `${request.proposedMarkName} ${request.goodsDescription}`;
     const score = (term: string): number => {
@@ -196,26 +199,31 @@ export class RecommendGoodsEngine {
     limit: number
   ): Promise<CandidateReferenceGoods[]> {
     const queries = buildSimilarGoodsQueries(request.goodsDescription);
+    const classNos = classFilters(request);
     const candidates: CandidateReferenceGoods[] = [];
 
     for (const query of queries) {
-      const items = await this.similarGoodsPort.searchSimilarGoods(query, request.classNo);
-      for (const item of items) {
-        const classNo = parseInt(item.classNo, 10);
-        if (!item.goodsName || !Number.isFinite(classNo)) continue;
+      for (const requestedClassNo of classNos) {
+        const items = await this.similarGoodsPort.searchSimilarGoods(query, requestedClassNo);
+        for (const item of items) {
+          const classNo = parseInt(item.classNo, 10);
+          if (!item.goodsName || !Number.isFinite(classNo)) continue;
 
-        candidates.push({
-          term: item.goodsName,
-          normalizedTerm: item.goodsName,
-          classNo,
-          sourceType: "kipris_similar_goods",
-          confidence: 0.9,
-          rationale: `KIPRIS similar-goods search result for "${query}". Similarity group code: ${
-            item.similarCode || "unknown"
-          }.`,
-          similarityGroupCodes: item.similarCode ? [item.similarCode] : [],
-          query,
-        });
+          candidates.push({
+            term: item.goodsName,
+            normalizedTerm: item.goodsName,
+            classNo,
+            sourceType: "kipris_similar_goods",
+            confidence: 0.9,
+            rationale: `KIPRIS similar-goods search result for "${query}"${
+              requestedClassNo ? ` in class ${requestedClassNo}` : ""
+            }. Similarity group code: ${item.similarCode || "unknown"}.`,
+            similarityGroupCodes: item.similarCode ? [item.similarCode] : [],
+            query,
+          });
+        }
+
+        if (candidates.length >= limit) break;
       }
 
       if (candidates.length >= limit) break;
@@ -240,6 +248,18 @@ function buildSimilarGoodsQueries(goodsDescription: string): string[] {
   return Array.from(new Set([normalized, ...parts]))
     .filter((query) => query.length >= 2 && query.length <= 80)
     .slice(0, 4);
+}
+
+function classFilters(request: CandidateGenerationRequest): Array<number | undefined> {
+  const classNos = Array.from(
+    new Set(
+      (request.targetClasses ?? []).filter(
+        (classNo) => Number.isInteger(classNo) && classNo > 0 && classNo <= 45
+      )
+    )
+  );
+  if (classNos.length > 0) return classNos;
+  return [request.classNo];
 }
 
 function dedupeEvidence(candidates: CandidateReferenceGoods[]): CandidateReferenceGoods[] {

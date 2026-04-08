@@ -148,6 +148,17 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
+function asNumberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .map((item) => (typeof item === 'number' ? item : Number(item)))
+        .filter((item) => Number.isInteger(item) && item > 0 && item <= 45)
+    )
+  );
+}
+
 function asCandidateSourceType(value: unknown): GeneratedCandidate['sourceType'] {
   return value === 'official_notice_name' ||
     value === 'accepted_similar_name' ||
@@ -221,6 +232,12 @@ function topSearchResults(request: ReportGenerationRequest) {
     index: index + 1,
     markName: result.markName,
     applicantName: result.applicantName ?? '미상',
+    applicationNumber: result.applicationNumber ?? '',
+    registerNumber: result.registerNumber ?? '',
+    classNo: result.classNo ?? '',
+    statusLabel: result.statusLabel ?? '',
+    designatedGoodsSummary: result.designatedGoodsSummary ?? '',
+    similarityGroupCodes: result.similarityGroupCodes ?? [],
     relevanceScore:
       result.relevanceScore !== undefined ? Math.round(result.relevanceScore * 100) + '%' : '미산출',
   }));
@@ -279,10 +296,16 @@ KIPRIS 1차 참고 근거가 제공되면 이를 먼저 검토하되, 고객 요
   "markNameNormalized": "정규화된 상표명",
   "goodsDescriptionNormalized": "상품/서비스 설명과 검토 포인트를 반영한 정규화 문장",
   "industry": "업종",
+  "targetClasses": [9, 38, 42],
   "confidence": 0.0,
   "missingFields": ["부족한 정보"],
   "reasoning": "추출 근거"
 }
+
+추출 기준:
+- 의뢰 내용에 "9류, 38류, 42류"처럼 지정 류가 있으면 targetClasses에 숫자 배열로 반드시 보존하세요.
+- 고객이 특정 류 검토를 요청했더라도, 첨부파일 맥락상 출원 필요성이 낮아 보이는 류는 goodsDescriptionNormalized와 reasoning에 "필요성 검토 대상"으로 표시하세요.
+- PDF/이미지 첨부에서 제품명, SDK, ROS, NPU, 반도체, 소프트웨어 플랫폼, 로봇 운영체제, 원격제어, SaaS 등 키워드를 확인하면 상품/서비스 설명에 반영하세요.
 
 [의뢰 제목]
 ${request.title}
@@ -306,6 +329,7 @@ ${request.senderEmail ?? '미기재'}`,
       markNameNormalized: asString(parsed.markNameNormalized, request.proposedMarkName ?? request.title),
       goodsDescriptionNormalized: asString(parsed.goodsDescriptionNormalized, request.rawText.slice(0, 500)),
       industry: asString(parsed.industry, '미분류'),
+      targetClasses: asNumberArray(parsed.targetClasses),
       confidence: asNumber(parsed.confidence, 0.7),
       missingFields: asStringArray(parsed.missingFields),
       reasoning: asString(parsed.reasoning, '고객 요청 내용 기준으로 추출'),
@@ -335,10 +359,12 @@ KIPRIS 유사상품군 근거를 최우선으로 검토하고, 내부 DB 근거�
 }
 
 작성 기준:
-- 고객 사업 설명을 제9류, 제35류, 제38류, 제41류, 제42류 등 관련 류 관점에서 검토하세요.
+- 고객이 지정한 targetClasses가 있으면 그 류를 우선 검토하되, 출원 필요성이 낮은 류는 "선택적/생략 가능" 판단 근거를 남기세요.
+- targetClasses가 없으면 고객 사업 설명을 제9류, 제35류, 제38류, 제41류, 제42류 등 관련 류 관점에서 검토하세요.
 - 실제 출원 명세에 가까운 구체적 표현을 우선하세요.
 - 너무 포괄적인 명칭은 피하고, 필요하면 하드웨어/소프트웨어/서비스를 나누세요.
 - 지정상품 후보는 ${request.count ?? 12}개 생성하세요.
+- DXNewton처럼 AI 반도체/NPU/SDK/ROS/로봇 운영 플랫폼 맥락이 확인되면 제9류 소프트웨어·반도체·집적회로와 제42류 설계·개발·AIaaS·기술자문을 중심으로 설계하고, 제38류는 통신서비스 자체 제공 근거가 있을 때만 후보화하세요.
 - KIPRIS 유사상품군 근거를 채택하면 sourceType은 "accepted_similar_name"으로 쓰고 similarityGroupCodes를 유지하세요.
 - 내부 공식 고시명칭 근거를 채택하면 sourceType은 "official_notice_name"으로 쓰세요.
 - 내부 유사 인정명칭 근거를 채택하면 sourceType은 "accepted_similar_name"으로 쓰세요.
@@ -352,6 +378,7 @@ ${request.proposedMarkName}
 ${request.goodsDescription}
 
 ${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}
+${request.targetClasses?.length ? `[고객 요청/Claude 추출 대상 류]\n${request.targetClasses.map((classNo) => `제${classNo}류`).join(', ')}` : ''}
 
 [KIPRIS 및 내부 DB 참고 근거]
 ${JSON.stringify(candidateReferenceGoods(request), null, 2)}`,
@@ -383,11 +410,17 @@ ${JSON.stringify(candidateReferenceGoods(request), null, 2)}`,
 - 제목: 상표 출원 검토 의견서 / TRADEMARK APPLICATION REVIEW OPINION
 - 대상: 상표명 및 고객/출원인 정보가 있으면 병기
 - 1. 지정상품의 선정: 류별 표 형식에 가까운 문장과 bullet 목록
-- 2. 추가 류 출원 필요성 검토: 필요/선택/생략 가능 여부와 조건
+- 2. 추가 류 출원 필요성 검토: 고객이 제38류 등 특정 류를 요청했으나 사업상 필요성이 낮아 보이면 "제38류 출원 필요성 검토"처럼 별도 제목으로 필요/선택/생략 가능 여부와 조건을 설명
 - 3. 등록가능성 검토: 식별력, 유사상표, 유사군 또는 상품 범위별 위험도
 - 4. 행정처리 이력 및 분류코드 변동 확인 필요성: 현재 제공 데이터로 확인 가능한 상태와 추가 확인이 필요한 지점
 - 5. 종합 의견: 류별 출원 권고, 등록가능성, 주요 쟁점
 - 말미: 추가 문의 안내와 담당 변리사 서명 자리
+
+DXNewton 실제 의견서 스타일 참고:
+- 제9류는 소프트웨어, SDK, ROS/로봇 운영, NPU/반도체/집적회로 등 핵심 제품군을 bullet로 정리합니다.
+- 제42류는 AIaaS, 집적회로/반도체 설계, 로봇공학 서비스, 소프트웨어·펌웨어 개발, NPU 기반 연구/자문 등 서비스업을 bullet로 정리합니다.
+- 제38류는 통신 인프라 자체를 외부에 제공하는 사업모델이 확인될 때만 권장하고, 근거가 부족하면 선택적 또는 생략 가능으로 정리합니다.
+- 유사군별 등록가능성은 "G390802 (소프트웨어)", "G390804 (반도체)"처럼 유사군 코드가 있으면 코드 단위로 위험도와 핵심 쟁점을 설명합니다.
 
 출력 형식:
 {
@@ -401,7 +434,9 @@ ${JSON.stringify(candidateReferenceGoods(request), null, 2)}`,
 - 단정적 등록 가능 보장은 금지하고, '가능성이 있습니다', '검토가 필요합니다'처럼 전문가 검토 초안의 톤을 유지하세요.
 - 유사상표 검색 결과가 부족하면 부족하다고 명시하고 수동 검토 필요성을 적으세요.
 - 위험도는 높음/중간/낮음 중 하나를 반드시 포함하세요.
+- 가능하면 등록가능성을 백분율로 단정하지 말고, 샘플처럼 필요할 때만 "약 60%" 등 변리사 검토용 추정치로 표현하세요.
 - 지정상품 선정에는 후보의 sourceType, rationale, similarityGroupCodes를 근거로 KIPRIS 유사상품군/공식 명칭/AI 보완 여부를 구분해 쓰세요.
+- 유사상표 검색 결과에는 applicationNumber, registerNumber, classNo, statusLabel, designatedGoodsSummary, similarityGroupCodes가 있으면 등록가능성 판단 근거로 반영하세요.
 - 상표 출원 속보 데이터는 선행상표 검색의 1차 근거로 쓰고, 상표 행정처리 이력과 상표 분류코드 변동 이력은 현재 자동 조회되지 않은 경우 "추가 확인 필요"로 명시하세요.
 - 분류코드나 유사군 코드가 있는 경우, 그 코드가 변동될 수 있음을 전제로 최종 제출 전 최신 분류코드 변동 이력 확인을 권고하세요.
 - 고객에게 바로 보낼 수 있게 공손하고 명확한 한국어를 사용하세요.
@@ -420,7 +455,7 @@ ${JSON.stringify(topSearchResults(request), null, 2)}
 
 [이전 리포트 또는 참고사항]
 ${request.previousReports?.join('\n\n') ?? '없음'}`,
-      4200,
+      6000,
       request.attachments
     );
 

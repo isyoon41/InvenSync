@@ -57,8 +57,8 @@ export class InquiryParseWorkflow {
       await prisma.parsedRequest.create({
         data: {
           inquiryId: inquiry.id,
-          llmProvider: "openai", // TODO: Extract from LLM provider
-          llmModel: "gpt-4",
+          llmProvider: "anthropic",
+          llmModel: process.env.CLAUDE_MODEL ?? "claude-sonnet-4-6",
           parsedJson: parsedData as any,
           markNameNormalized: parsedData.markNameNormalized,
           goodsDescriptionNormalized: parsedData.goodsDescriptionNormalized,

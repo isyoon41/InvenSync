@@ -49,6 +49,8 @@ export class CandidateGenerateWorkflow {
       }
 
       const runVersion = request.runVersion || 1;
+      const parsedJson = (parsedRequest.parsedJson ?? {}) as { targetClasses?: unknown };
+      const targetClasses = normalizeTargetClasses(parsedJson.targetClasses);
 
       // Create candidate run
       const candidateRun = await prisma.candidateRun.create({
@@ -60,11 +62,12 @@ export class CandidateGenerateWorkflow {
             markName: parsedRequest.markNameNormalized,
             goods: parsedRequest.goodsDescriptionNormalized,
             confidence: parsedRequest.confidence,
+            targetClasses,
           },
         },
       });
 
-      // 상품 후보 추천 엔진: DB(공식·유사 인정 명칭) + LLM(AI 후보) 혼합 생성
+      // 상품 후보 추천 엔진: KIPRIS 유사상품군을 우선 수집하고 내부 DB를 보조 근거로 삼아 Claude가 최종 선정
       const engine = new RecommendGoodsEngine(
         this.repositories.goodsTerms,
         request.llmPort,
@@ -73,6 +76,7 @@ export class CandidateGenerateWorkflow {
       const generatedCandidates = await engine.recommend({
         proposedMarkName: parsedRequest.markNameNormalized || "",
         goodsDescription: parsedRequest.goodsDescriptionNormalized || "",
+        targetClasses,
         count: 8,
         includeCompetitors: true,
       });
@@ -135,4 +139,15 @@ export class CandidateGenerateWorkflow {
       );
     }
   }
+}
+
+function normalizeTargetClasses(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value
+        .map((item) => (typeof item === "number" ? item : Number(item)))
+        .filter((item) => Number.isInteger(item) && item > 0 && item <= 45)
+    )
+  );
 }

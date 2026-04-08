@@ -8,13 +8,30 @@ function compactQuery(value?: string | null, maxLength = 80): string {
   return (value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
 }
 
+function inferPreClaudeMarkQuery(inquiry: {
+  title: string;
+  rawText: string;
+  proposedMarkName?: string | null;
+}): string {
+  if (inquiry.proposedMarkName?.trim()) return compactQuery(inquiry.proposedMarkName, 60);
+
+  const text = `${inquiry.title}\n${inquiry.rawText}`;
+  const beforeTrademark = text.match(/([A-Za-z0-9][A-Za-z0-9._ -]{1,40})\s*상표/);
+  if (beforeTrademark?.[1]) return compactQuery(beforeTrademark[1], 60);
+
+  const firstLatinToken = text.match(/\b[A-Za-z][A-Za-z0-9._-]{2,40}\b/);
+  if (firstLatinToken?.[0]) return compactQuery(firstLatinToken[0], 60);
+
+  return compactQuery(inquiry.title, 60);
+}
+
 async function buildKiprisNormalizationEvidence(inquiry: {
   title: string;
   rawText: string;
   proposedMarkName?: string | null;
 }): Promise<string> {
   const searchPort = createKiprisOnlyTrademarkSearchPort();
-  const markQuery = compactQuery(inquiry.proposedMarkName || inquiry.title, 60);
+  const markQuery = inferPreClaudeMarkQuery(inquiry);
   const goodsQuery = compactQuery(inquiry.rawText, 80);
 
   const [markResults, goodsResults] = await Promise.all([

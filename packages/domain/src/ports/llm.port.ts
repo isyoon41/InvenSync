@@ -2,6 +2,7 @@ export interface ParsedInquiryData {
   markNameNormalized?: string;
   goodsDescriptionNormalized?: string;
   industry?: string;
+  targetClasses?: number[];
   missingFields?: string[];
   confidence?: number;
   reasoning?: string;
@@ -36,6 +37,7 @@ export interface CandidateGenerationRequest {
   proposedMarkName: string;
   goodsDescription: string;
   classNo?: number;
+  targetClasses?: number[];
   count?: number;
   includeCompetitors?: boolean;
   referenceGoods?: CandidateReferenceGoods[];
@@ -72,7 +74,10 @@ export interface ReportGenerationRequest {
     relevanceScore?: number;
     statusLabel?: string;
     applicationNumber?: string;
+    registerNumber?: string;
     classNo?: number;
+    designatedGoodsSummary?: string;
+    similarityGroupCodes?: string[];
   }>;
   candidateGoods?: Array<{
     term: string;
