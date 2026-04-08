@@ -73,7 +73,7 @@ export function HomeLoginForm({ isAuthenticated, userName }: HomeLoginFormProps)
       <div className="text-center">
         <img src="/logo.png" alt="InvenSync" className="mx-auto h-10 w-auto object-contain" />
         <h2 className="mt-5 text-2xl font-bold text-slate-950">로그인</h2>
-        <p className="mt-2 text-sm text-slate-500">상표 검토 워크플로우를 시작하세요</p>
+        <p className="mt-2 text-sm text-slate-500">특허법인 인벤싱크 상표 검토 워크플로우</p>
       </div>
 
       <form className="mt-7 space-y-5" onSubmit={handleSubmit}>

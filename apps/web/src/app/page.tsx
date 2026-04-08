@@ -15,17 +15,17 @@ export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
   return (
-    <main className="h-screen overflow-hidden bg-slate-950 text-white">
+    <main className="h-screen overflow-hidden bg-slate-50 text-slate-950">
       <div className="grid h-full grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
-        <section className="relative hidden overflow-hidden bg-slate-950 px-10 py-8 lg:flex lg:flex-col lg:justify-between">
+        <section className="relative hidden overflow-hidden bg-white px-10 py-8 lg:flex lg:flex-col lg:justify-between">
           <div
-            className="absolute inset-0 opacity-[0.05]"
+            className="absolute inset-0 opacity-[0.28]"
             style={{
-              backgroundImage: 'linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px)',
+              backgroundImage: 'linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px)',
               backgroundSize: '54px 54px',
             }}
           />
-          <div className="absolute inset-y-0 right-0 w-px bg-slate-800" />
+          <div className="absolute inset-y-0 right-0 w-px bg-slate-200" />
 
           <div className="relative flex items-center justify-between">
             <Link href="/" className="inline-flex items-center">
@@ -33,28 +33,27 @@ export default async function HomePage() {
                 src="/logo.png"
                 alt="InvenSync"
                 className="h-9 w-auto object-contain"
-                style={{ filter: 'brightness(0) invert(1)' }}
               />
             </Link>
             <a
               href="http://invensync.kr"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-semibold text-slate-400 transition hover:text-white"
+              className="text-xs font-semibold text-slate-500 transition hover:text-blue-600"
             >
               특허법인 인벤싱크
             </a>
           </div>
 
           <div className="relative max-w-xl">
-            <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-300">
-              InvenSync TM Assistant
+            <p className="text-xs font-bold uppercase tracking-[0.28em] text-blue-600">
+              InvenSync Patent Law Firm
             </p>
-            <h1 className="mt-6 text-5xl font-bold leading-tight tracking-tight">
+            <h1 className="mt-6 text-5xl font-bold leading-tight tracking-tight text-slate-950">
               상표 검토 답변서 초안을
-              <span className="block text-blue-400">체계적으로 준비합니다</span>
+              <span className="block text-blue-600">체계적으로 준비합니다</span>
             </h1>
-            <p className="mt-6 text-base leading-8 text-slate-300">
+            <p className="mt-6 text-base leading-8 text-slate-600">
               고객의 상표 검토 요청을 접수하면 지정상품 설계, KIPRIS 유사상표 검색,
               등록가능성 분석, 고객 회신 메일 초안까지 한 흐름으로 정리합니다.
             </p>
@@ -63,20 +62,20 @@ export default async function HomePage() {
               {workflowItems.map((item, index) => (
                 <div
                   key={item}
-                  className="flex items-start gap-3 rounded-lg border border-slate-800 bg-slate-900/70 px-4 py-3"
+                  className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm"
                 >
                   <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500 text-xs font-bold text-white">
                     {index + 1}
                   </span>
-                  <p className="text-sm leading-6 text-slate-200">{item}</p>
+                  <p className="text-sm leading-6 text-slate-700">{item}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="relative flex items-center justify-between text-xs text-slate-500">
+          <div className="relative flex items-center justify-between text-xs text-slate-400">
             <span>Trademark review workflow platform</span>
-            <span>© InvenSync Patent Firm</span>
+            <span>© InvenSync Patent Law Firm</span>
           </div>
         </section>
 
@@ -97,7 +96,7 @@ export default async function HomePage() {
             <div className="w-full max-w-md">
               <div className="mb-7 lg:hidden">
                 <p className="text-xs font-bold uppercase tracking-[0.24em] text-blue-600">
-                  InvenSync TM Assistant
+                  InvenSync Patent Law Firm
                 </p>
                 <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950">
                   상표 검토 답변서 초안을 체계적으로 준비합니다
