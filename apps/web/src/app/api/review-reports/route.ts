@@ -3,6 +3,9 @@ import { getRepositoryContainer } from '@ip-review/db';
 import { ReportGenerateWorkflow } from '@ip-review/workflows';
 import { createLLMPort } from '@ip-review/llm-engine';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 /**
  * POST /api/review-reports
  * 검토 리포트 자동 생성 — Gemini LLM 분석

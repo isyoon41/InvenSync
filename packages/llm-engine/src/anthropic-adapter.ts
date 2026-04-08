@@ -15,6 +15,9 @@ import type {
 
 const ANTHROPIC_MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
+const RETRYABLE_STATUS_CODES = new Set([408, 409, 429, 500, 502, 503, 504, 529]);
+const MAX_ANTHROPIC_ATTEMPTS = 4;
+const DEFAULT_RETRY_DELAYS_MS = [1200, 2500, 5000];
 
 type ClaudeJsonShape = Record<string, unknown>;
 
@@ -91,6 +94,30 @@ function extractFirstBalancedObject(text: string): string | null {
 
 function normalizeGeneratedText(value: unknown, fallback = ''): string {
   return asString(value, fallback).replace(/\\n/g, '\n');
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayFromHeader(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get('retry-after');
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return Math.min(seconds * 1000, 10000);
+    }
+  }
+
+  return DEFAULT_RETRY_DELAYS_MS[attempt - 1] ?? DEFAULT_RETRY_DELAYS_MS.at(-1) ?? 5000;
+}
+
+function formatAnthropicApiError(status: number, errorText: string): string {
+  if (status === 529) {
+    return `Claude API가 일시적으로 과부하입니다. ${MAX_ANTHROPIC_ATTEMPTS}회 재시도 후에도 처리되지 않았습니다. 잠시 후 다시 시도해 주세요.`;
+  }
+
+  return `Anthropic API error ${status}: ${errorText}`;
 }
 
 function asString(value: unknown, fallback = ''): string {
@@ -273,38 +300,7 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
   }
 
   private async completeJson(prompt: string, maxTokens: number): Promise<ClaudeJsonShape> {
-    const response = await fetch(ANTHROPIC_MESSAGES_URL, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: maxTokens,
-        temperature: 0.2,
-        system: 'You are a careful Korean trademark attorney assistant. Return valid JSON only.',
-        tools: [
-          {
-            name: 'emit_json',
-            description: 'Return the requested result as a JSON object matching the user prompt.',
-            input_schema: {
-              type: 'object',
-              properties: {},
-              additionalProperties: true,
-            },
-          },
-        ],
-        tool_choice: { type: 'tool', name: 'emit_json' },
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Anthropic API error ${response.status}: ${errorText}`);
-    }
+    const response = await this.fetchWithRetry(prompt, maxTokens);
 
     const payload = (await response.json()) as {
       content?: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
@@ -321,5 +317,71 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
       .join('\n');
     if (!text) throw new Error('Anthropic API response did not include text content');
     return extractJsonObject(text);
+  }
+
+  private async fetchWithRetry(prompt: string, maxTokens: number): Promise<Response> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= MAX_ANTHROPIC_ATTEMPTS; attempt += 1) {
+      let response: Response;
+      try {
+        response = await fetch(ANTHROPIC_MESSAGES_URL, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: this.model,
+            max_tokens: maxTokens,
+            temperature: 0.2,
+            system: 'You are a careful Korean trademark attorney assistant. Return valid JSON only.',
+            tools: [
+              {
+                name: 'emit_json',
+                description: 'Return the requested result as a JSON object matching the user prompt.',
+                input_schema: {
+                  type: 'object',
+                  properties: {},
+                  additionalProperties: true,
+                },
+              },
+            ],
+            tool_choice: { type: 'tool', name: 'emit_json' },
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt >= MAX_ANTHROPIC_ATTEMPTS) break;
+
+        console.warn('[anthropic-adapter] retrying Claude request after fetch failure', {
+          attempt,
+          maxAttempts: MAX_ANTHROPIC_ATTEMPTS,
+          error: lastError.message,
+        });
+        await delay(DEFAULT_RETRY_DELAYS_MS[attempt - 1] ?? 5000);
+        continue;
+      }
+
+      if (response.ok) return response;
+
+      const errorText = await response.text();
+      const shouldRetry =
+        RETRYABLE_STATUS_CODES.has(response.status) && attempt < MAX_ANTHROPIC_ATTEMPTS;
+
+      if (!shouldRetry) {
+        throw new Error(formatAnthropicApiError(response.status, errorText));
+      }
+
+      console.warn(
+        `[anthropic-adapter] retrying Claude request after ${response.status} response`,
+        { attempt, maxAttempts: MAX_ANTHROPIC_ATTEMPTS }
+      );
+      await delay(retryDelayFromHeader(response, attempt));
+    }
+
+    throw lastError ?? new Error('Anthropic API request failed');
   }
 }
