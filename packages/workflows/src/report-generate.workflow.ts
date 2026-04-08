@@ -23,6 +23,11 @@ function getCandidateSimilarityCodes(candidate: any): string[] {
       .map((group: { similarityGroupCode?: string }) => group.similarityGroupCode)
       .filter((code: unknown): code is string => typeof code === "string" && code.length > 0);
   }
+  if (Array.isArray(candidate.similarityGroup)) {
+    return candidate.similarityGroup
+      .map((group: { similarityGroupCode?: string }) => group.similarityGroupCode)
+      .filter((code: unknown): code is string => typeof code === "string" && code.length > 0);
+  }
   return [];
 }
 
