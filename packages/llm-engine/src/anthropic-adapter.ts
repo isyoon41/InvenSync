@@ -291,6 +291,7 @@ ${request.previousReports?.join('\n\n') ?? '없음'}`,
             description: 'Return the requested result as a JSON object matching the user prompt.',
             input_schema: {
               type: 'object',
+              properties: {},
               additionalProperties: true,
             },
           },
