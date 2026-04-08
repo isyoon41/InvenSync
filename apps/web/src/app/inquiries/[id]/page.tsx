@@ -17,7 +17,7 @@ const STEPS = [
 ];
 
 const STATUS_STEP: Record<string, number> = {
-  new: 0, parsed: 1, candidate_ready: 2, searched: 3,
+  new: 0, parsed: 1, candidate_ready: 2, searched: 4,
   reviewed: 4, approved: 4, exported: 4,
 };
 
@@ -145,6 +145,8 @@ function WorkflowCommandCenter({
     }
   })();
 
+  const searchCompleted = ['searched', 'reviewed', 'approved', 'exported'].includes(inquiry.status);
+
   const outputChecks = [
     {
       label: '요청 접수',
@@ -170,8 +172,8 @@ function WorkflowCommandCenter({
     },
     {
       label: '유사상표 검색',
-      value: results.length ? `${results.length}건 결과` : '대기 중',
-      done: results.length > 0,
+      value: searchCompleted ? `${results.length}건 결과` : '대기 중',
+      done: searchCompleted,
       tab: 'search' as const,
     },
   ];
@@ -243,6 +245,7 @@ function WorkflowOverview({
   onOpenReport: () => void;
 }) {
   const hasReport = ['reviewed', 'approved', 'exported'].includes(inquiry.status);
+  const searchCompleted = ['searched', 'reviewed', 'approved', 'exported'].includes(inquiry.status);
   const cards = [
     {
       title: '1. 요청 추출',
@@ -262,11 +265,13 @@ function WorkflowOverview({
     },
     {
       title: '3. 유사상표 검색',
-      body: results.length
-        ? `유사상표 검색 결과 ${results.length}건을 위험도 판단 근거로 사용합니다.`
+      body: searchCompleted
+        ? results.length
+          ? `유사상표 검색 결과 ${results.length}건을 위험도 판단 근거로 사용합니다.`
+          : 'KIPRIS 유사상표 검색이 완료되었고 검색 결과는 0건입니다. 이 사실을 검토 의견서 생성의 근거로 사용합니다.'
         : '지정상품 후보를 확정한 뒤 KIPRIS 유사상표 검색을 실행합니다.',
-      done: results.length > 0,
-      action: results.length ? (() => onSelectTab('search')) : null,
+      done: searchCompleted,
+      action: searchCompleted ? (() => onSelectTab('search')) : null,
     },
     {
       title: '4. 의견서·메일 초안',
