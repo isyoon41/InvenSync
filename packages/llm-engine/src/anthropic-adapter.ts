@@ -8,6 +8,7 @@ import type {
   LLMAttachmentContext,
   LLMParseRequest,
   ParsedInquiryData,
+  ParsedNormalizedGood,
   CandidateGenerationRequest,
   GeneratedCandidate,
   ReportGenerationRequest,
@@ -159,6 +160,33 @@ function asNumberArray(value: unknown): number[] {
   );
 }
 
+function asNormalizedGoods(value: unknown): ParsedNormalizedGood[] {
+  if (!Array.isArray(value)) return [];
+
+  const goods: ParsedNormalizedGood[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+
+    const classNo = asNumber(item.classNo);
+    const term = asString(item.term).trim();
+    if (!Number.isInteger(classNo) || classNo < 1 || classNo > 45 || !term) {
+      continue;
+    }
+
+    const kind = item.kind === 'service' ? 'service' : item.kind === 'goods' ? 'goods' : undefined;
+    goods.push({
+      classNo,
+      term,
+      ...(kind && { kind }),
+      basis: asString(item.basis),
+      evidenceLabel: asString(item.evidenceLabel),
+      evidenceUrl: asString(item.evidenceUrl),
+    });
+  }
+
+  return goods;
+}
+
 function asCandidateSourceType(value: unknown): GeneratedCandidate['sourceType'] {
   return value === 'official_notice_name' ||
     value === 'accepted_similar_name' ||
@@ -295,6 +323,16 @@ KIPRIS 1차 참고 근거가 제공되면 이를 먼저 검토하되, 고객 요
 {
   "markNameNormalized": "정규화된 상표명",
   "goodsDescriptionNormalized": "상품/서비스 설명과 검토 포인트를 반영한 정규화 문장",
+  "normalizedGoods": [
+    {
+      "classNo": 9,
+      "term": "지정상품/지정서비스업 명칭",
+      "kind": "goods",
+      "basis": "고객 의뢰 또는 첨부자료에서 확인한 선정 근거",
+      "evidenceLabel": "KIPRIS 1차 참고 근거 또는 첨부자료명",
+      "evidenceUrl": ""
+    }
+  ],
   "industry": "업종",
   "targetClasses": [9, 38, 42],
   "confidence": 0.0,
@@ -304,6 +342,10 @@ KIPRIS 1차 참고 근거가 제공되면 이를 먼저 검토하되, 고객 요
 
 추출 기준:
 - 의뢰 내용에 "9류, 38류, 42류"처럼 지정 류가 있으면 targetClasses에 숫자 배열로 반드시 보존하세요.
+- normalizedGoods는 고객 의뢰와 첨부자료를 분석해 실제 출원 검토가 필요한 류별 지정상품/지정서비스업을 개별 항목으로 나누어 작성하세요.
+- normalizedGoods.term은 "소프트웨어"처럼 지나치게 넓게 쓰지 말고, 첨부자료 맥락을 반영해 KIPRIS/NICE 검색에 투입할 수 있는 수준으로 구체화하세요.
+- normalizedGoods.classNo는 고객 요청 류와 첨부자료 맥락을 함께 판단해 기재하세요. 출원 필요성이 낮은 류도 고객이 요청했다면 별도 항목으로 두고 basis에 "필요성 검토 대상"이라고 쓰세요.
+- evidenceUrl은 확실한 원문 URL이 제공된 경우에만 사용하고, 없으면 빈 문자열로 두세요. URL을 추측해서 만들지 마세요.
 - 고객이 특정 류 검토를 요청했더라도, 첨부파일 맥락상 출원 필요성이 낮아 보이는 류는 goodsDescriptionNormalized와 reasoning에 "필요성 검토 대상"으로 표시하세요.
 - PDF/이미지 첨부에서 제품명, SDK, ROS, NPU, 반도체, 소프트웨어 플랫폼, 로봇 운영체제, 원격제어, SaaS 등 키워드를 확인하면 상품/서비스 설명에 반영하세요.
 
@@ -321,13 +363,14 @@ ${request.rawText}
 
 [발신자]
 ${request.senderEmail ?? '미기재'}`,
-      1200,
+      2000,
       request.attachments
     );
 
     return {
       markNameNormalized: asString(parsed.markNameNormalized, request.proposedMarkName ?? request.title),
       goodsDescriptionNormalized: asString(parsed.goodsDescriptionNormalized, request.rawText.slice(0, 500)),
+      normalizedGoods: asNormalizedGoods(parsed.normalizedGoods),
       industry: asString(parsed.industry, '미분류'),
       targetClasses: asNumberArray(parsed.targetClasses),
       confidence: asNumber(parsed.confidence, 0.7),

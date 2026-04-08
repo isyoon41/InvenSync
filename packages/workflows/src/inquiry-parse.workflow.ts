@@ -27,11 +27,11 @@ export class InquiryParseWorkflow {
         throw new ValidationError(`Inquiry not found: ${request.inquiryId}`);
       }
 
-      if (inquiry.status !== "new") {
+      if (!["new", "parsed"].includes(inquiry.status)) {
         throw new InquiryProcessingError(
           inquiry.id,
           "parse",
-          `Inquiry must be in 'new' status, got '${inquiry.status}'`
+          `Inquiry must be in 'new' or 'parsed' status, got '${inquiry.status}'`
         );
       }
 
@@ -52,6 +52,11 @@ export class InquiryParseWorkflow {
           "Failed to extract mark name or goods description"
         );
       }
+
+      await prisma.parsedRequest.updateMany({
+        where: { inquiryId: inquiry.id, isCurrent: true },
+        data: { isCurrent: false },
+      });
 
       // Store parsed data
       await prisma.parsedRequest.create({

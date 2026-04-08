@@ -1,11 +1,21 @@
 export interface ParsedInquiryData {
   markNameNormalized?: string;
   goodsDescriptionNormalized?: string;
+  normalizedGoods?: ParsedNormalizedGood[];
   industry?: string;
   targetClasses?: number[];
   missingFields?: string[];
   confidence?: number;
   reasoning?: string;
+}
+
+export interface ParsedNormalizedGood {
+  classNo: number;
+  term: string;
+  kind?: "goods" | "service";
+  basis?: string;
+  evidenceLabel?: string;
+  evidenceUrl?: string;
 }
 
 export interface LLMParseRequest {

@@ -97,9 +97,9 @@ export async function POST(
       );
     }
 
-    if (inquiry.status !== 'new') {
+    if (!['new', 'parsed'].includes(inquiry.status)) {
       return NextResponse.json(
-        { error: `정규화는 '신규' 상태에서만 가능합니다. 현재 상태: ${inquiry.status}` },
+        { error: `정규화는 '신규' 또는 '정규화 완료' 상태에서만 가능합니다. 현재 상태: ${inquiry.status}` },
         { status: 422 }
       );
     }

@@ -468,6 +468,10 @@ export default function InquiryDetailPage({ params }: PageProps) {
         headers: { 'Content-Type': 'application/json' },
       });
       const result = await res.json();
+      if (!res.ok) {
+        alert(`정규화 처리 중 오류가 발생했습니다: ${result.error || '알 수 없는 오류'}`);
+        return;
+      }
       if (result.inquiry) {
         setInquiry(result.inquiry);
       }
@@ -671,7 +675,7 @@ export default function InquiryDetailPage({ params }: PageProps) {
               inquiryId={params.id}
               parsedData={parsedData || undefined}
               loading={parsing}
-              onRegenerate={inquiry.status !== 'new' ? handleParse : undefined}
+              onRegenerate={inquiry.status === 'parsed' ? handleParse : undefined}
               onProceedToCandidates={inquiry.status === 'parsed' ? handleProcess : undefined}
             />
           </div>

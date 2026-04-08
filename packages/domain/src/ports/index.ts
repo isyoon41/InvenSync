@@ -3,6 +3,7 @@ export type { IGoodsTermPort, GoodsTermMatch } from "./goods-term.port";
 export type {
   ILLMPort,
   ParsedInquiryData,
+  ParsedNormalizedGood,
   LLMParseRequest,
   LLMAttachmentContext,
   LLMAttachmentKind,
