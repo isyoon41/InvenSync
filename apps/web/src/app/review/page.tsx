@@ -122,8 +122,8 @@ export default function ReviewPage() {
         {/* Page Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">검토 리포트</h1>
-            <p className="page-description">AI 분석 리포트를 검토하고 고객 회신을 승인합니다</p>
+            <h1 className="page-title">답변서 작성</h1>
+            <p className="page-description">상표 출원 검토 의견서와 고객 회신 메일 초안을 검토하고 승인합니다</p>
           </div>
         </div>
 
@@ -132,19 +132,19 @@ export default function ReviewPage() {
           <div className="stat-card">
             <div className="stat-card-value text-amber-600">{pendingReports.length}</div>
             <div className="stat-card-label">승인 대기</div>
-            <div className="text-xs text-slate-400 mt-0.5">검토가 필요한 리포트</div>
+            <div className="text-xs text-slate-400 mt-0.5">검토가 필요한 답변서</div>
             <div className="stat-card-accent bg-amber-400" />
           </div>
           <div className="stat-card">
             <div className="stat-card-value text-emerald-600">{approvedReports.length}</div>
             <div className="stat-card-label">승인 완료</div>
-            <div className="text-xs text-slate-400 mt-0.5">처리 완료된 리포트</div>
+            <div className="text-xs text-slate-400 mt-0.5">처리 완료된 답변서</div>
             <div className="stat-card-accent bg-emerald-500" />
           </div>
           <div className="stat-card">
             <div className="stat-card-value text-blue-600">{totalCount}</div>
-            <div className="stat-card-label">전체 리포트</div>
-            <div className="text-xs text-slate-400 mt-0.5">누적 검토 리포트 수</div>
+            <div className="stat-card-label">전체 답변서</div>
+            <div className="text-xs text-slate-400 mt-0.5">누적 검토 의견서 수</div>
             <div className="stat-card-accent bg-blue-500" />
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function ReviewPage() {
                 </svg>
               </div>
               <p className="text-sm font-medium text-slate-600">
-                {filter === 'pending' ? '승인 대기 중인' : '승인 완료된'} 리포트가 없습니다
+                {filter === 'pending' ? '승인 대기 중인' : '승인 완료된'} 답변서가 없습니다
               </p>
             </div>
           ) : (

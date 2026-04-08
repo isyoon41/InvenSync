@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRepositoryContainer, prisma } from "@ip-review/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const repositories = getRepositoryContainer();

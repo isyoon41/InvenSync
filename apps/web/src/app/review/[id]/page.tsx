@@ -106,7 +106,7 @@ export default function ReviewDetailPage({ params }: PageProps) {
           userDepartment={session?.user?.department || undefined}
         />
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-slate-500 py-20">리포트를 찾을 수 없습니다</div>
+          <div className="text-center text-slate-500 py-20">답변서를 찾을 수 없습니다</div>
         </main>
       </>
     );
@@ -123,9 +123,9 @@ export default function ReviewDetailPage({ params }: PageProps) {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center gap-2 text-sm">
-          <Link href="/review" className="text-blue-600 hover:text-blue-700">← 검토 리포트 목록</Link>
+          <Link href="/review" className="text-blue-600 hover:text-blue-700">← 답변서 목록</Link>
           <span className="text-slate-300">/</span>
-          <span className="text-slate-500">검토 리포트</span>
+          <span className="text-slate-500">상표 출원 검토 의견서</span>
         </div>
 
         {saving && (

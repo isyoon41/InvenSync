@@ -158,8 +158,6 @@ export function ReviewReport({
         designatedGoodsSummary: sr.designatedGoodsSummary,
       }));
 
-  const evidences = report.evidences ?? [];
-
   return (
     <div className="space-y-5">
       {/* 상태 바 */}
@@ -167,7 +165,10 @@ export function ReviewReport({
         style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
       >
         <div>
-          <h1 className="text-xl font-bold text-slate-900">검토 리포트</h1>
+          <h1 className="text-xl font-bold text-slate-900">상표 출원 검토 의견서</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            지정상품 설계, 유사상표 검색, 등록가능성 검토, 종합의견 및 고객 회신 초안
+          </p>
           {isApproved && (
             <p className="text-xs text-emerald-600 mt-0.5 flex items-center gap-1">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
@@ -207,39 +208,39 @@ export function ReviewReport({
         </div>
       </div>
 
-      {/* 검토 요약 */}
-      <SectionCard icon="📋" title="검토 요약" accentColor="text-blue-700" headerBg="bg-blue-50">
+      {/* 지정상품의 선정 */}
+      <SectionCard icon="📋" title="1. 지정상품의 선정" accentColor="text-blue-700" headerBg="bg-blue-50">
         {editMode ? (
           <textarea
             value={formData.summary}
             onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
             className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
             rows={5}
-            placeholder="검토 요약을 입력하세요..."
+            placeholder="류별 지정상품/지정서비스업 선정 내용을 입력하세요..."
           />
         ) : report.summary ? (
           <RichText text={report.summary} />
         ) : (
-          <p className="text-sm text-slate-400 italic">검토 요약 없음</p>
+          <p className="text-sm text-slate-400 italic">지정상품 선정 내용 없음</p>
         )}
       </SectionCard>
 
-      {/* 위험 분석 */}
-      <SectionCard icon="⚠️" title="위험 분석" accentColor="text-red-700" headerBg="bg-red-50">
+      {/* 등록가능성 검토 */}
+      <SectionCard icon="⚠️" title="2. 등록가능성 및 위험도 검토" accentColor="text-red-700" headerBg="bg-red-50">
         {editMode ? (
           <textarea
             value={formData.riskNote}
             onChange={(e) => setFormData({ ...formData, riskNote: e.target.value })}
             className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
             rows={4}
-            placeholder="위험 분석 내용을 입력하세요..."
+            placeholder="식별력, 유사상표, 위험도 분석 내용을 입력하세요..."
           />
         ) : (
           <>
             {report.riskNote ? (
               <RichText text={report.riskNote} />
             ) : (
-              <p className="text-sm text-slate-400 italic">위험 분석 없음</p>
+              <p className="text-sm text-slate-400 italic">등록가능성 검토 내용 없음</p>
             )}
             {evidenceItems.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-100">
@@ -255,20 +256,20 @@ export function ReviewReport({
         )}
       </SectionCard>
 
-      {/* 출원 가능성 평가 */}
-      <SectionCard icon="✅" title="출원 가능성 평가" accentColor="text-emerald-700" headerBg="bg-emerald-50">
+      {/* 종합 의견 */}
+      <SectionCard icon="✅" title="3. 종합 의견" accentColor="text-emerald-700" headerBg="bg-emerald-50">
         {editMode ? (
           <textarea
             value={formData.recommendation}
             onChange={(e) => setFormData({ ...formData, recommendation: e.target.value })}
             className="w-full text-sm border border-slate-200 rounded-lg p-3 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none"
             rows={4}
-            placeholder="출원 가능성 평가를 입력하세요..."
+            placeholder="류별 출원 권고, 등록가능성, 보완사항을 입력하세요..."
           />
         ) : report.recommendation ? (
           <RecommendationText text={report.recommendation} />
         ) : (
-          <p className="text-sm text-slate-400 italic">평가 없음</p>
+          <p className="text-sm text-slate-400 italic">종합 의견 없음</p>
         )}
       </SectionCard>
 
@@ -276,7 +277,7 @@ export function ReviewReport({
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}>
         <div className="px-5 py-3.5 flex items-center gap-2.5 bg-violet-50 border-b border-slate-100">
           <span className="text-base">✉️</span>
-          <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700">고객 회신 초안</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700">4. 고객 회신 메일 초안</h2>
           {!editMode && report.clientReplyDraft && (
             <button
               onClick={handleCopyDraft}

@@ -84,22 +84,22 @@ const NAV_ITEMS: NavItem[] = [
     quickLink: { label: '전체 접수함 보기', href: '/inquiries' },
   },
   {
-    label: '검토 리포트',
+    label: '답변서 작성',
     categories: [
       {
         id: 'reports',
-        label: '리포트 관리',
-        title: '검토 리포트 관리',
+        label: '검토의견서',
+        title: '상표 출원 검토 의견서',
         items: [
           {
-            label: '승인 대기',
-            desc: 'AI 분석 리포트를 검토하고 승인합니다',
+            label: '검토·수정 대기',
+            desc: 'AI가 생성한 상표 출원 검토 의견서를 검토합니다',
             href: '/review',
             badge: null,
           },
           {
             label: '승인 완료',
-            desc: '처리 완료된 리포트 이력을 조회합니다',
+            desc: '발송 준비가 완료된 답변서 이력을 조회합니다',
             href: '/review?filter=approved',
             badge: null,
           },
@@ -108,18 +108,18 @@ const NAV_ITEMS: NavItem[] = [
       {
         id: 'drafts',
         label: '고객 회신',
-        title: '고객 회신 초안',
+        title: '고객 회신 메일 초안',
         items: [
           {
             label: '회신 초안 확인',
-            desc: 'AI가 생성한 고객 회신 초안을 확인합니다',
+            desc: '검토의견서를 바탕으로 작성된 고객 회신 문구를 확인합니다',
             href: '/review',
             badge: null,
           },
         ],
       },
     ],
-    quickLink: { label: '검토 리포트 전체 보기', href: '/review' },
+    quickLink: { label: '답변서 전체 보기', href: '/review' },
   },
   {
     label: '통계',
