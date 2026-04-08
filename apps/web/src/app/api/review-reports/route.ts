@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepositoryContainer } from '@ip-review/db';
 import { ReportGenerateWorkflow } from '@ip-review/workflows';
-import { createLLMPort } from '@ip-review/llm-engine';
+import { createClaudeOnlyLLMPort } from '@ip-review/llm-engine';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 /**
  * POST /api/review-reports
- * 검토 리포트 자동 생성 — Gemini LLM 분석
+ * 검토 리포트 자동 생성 — Claude 전용 분석
  * (상태: searched → reviewed)
  */
 export async function POST(request: NextRequest) {
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       resolvedSearchJobId = doneJob.id;
     }
 
-    const llmPort = createLLMPort();
+    const llmPort = createClaudeOnlyLLMPort();
 
     const workflow = new ReportGenerateWorkflow(repositories);
     const result = await workflow.execute({

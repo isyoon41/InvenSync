@@ -11,6 +11,14 @@ import { MockLLMAdapter } from './mock-adapter';
 
 export type LLMProviderMode = 'mock' | 'gemini' | 'claude' | 'anthropic';
 
+export function createClaudeOnlyLLMPort(): ILLMPort {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY is required for Claude-only report generation');
+  }
+  return new AnthropicLLMAdapter(apiKey);
+}
+
 export function createLLMPort(mode?: LLMProviderMode | string): ILLMPort {
   const resolvedMode = mode ?? process.env.LLM_PROVIDER_MODE ?? 'mock';
 
