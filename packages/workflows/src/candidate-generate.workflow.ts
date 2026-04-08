@@ -1,4 +1,4 @@
-import type { ILLMPort, GeneratedCandidate } from "@ip-review/domain";
+import type { ILLMPort, GeneratedCandidate, ParsedNormalizedGood } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
@@ -53,8 +53,12 @@ export class CandidateGenerateWorkflow {
         orderBy: { runVersion: "desc" },
       });
       const runVersion = request.runVersion || ((latestRun?.runVersion ?? 0) + 1);
-      const parsedJson = (parsedRequest.parsedJson ?? {}) as { targetClasses?: unknown };
+      const parsedJson = (parsedRequest.parsedJson ?? {}) as {
+        normalizedGoods?: unknown;
+        targetClasses?: unknown;
+      };
       const targetClasses = normalizeTargetClasses(parsedJson.targetClasses);
+      const normalizedGoods = normalizeParsedGoods(parsedJson.normalizedGoods);
 
       // Create candidate run
       const candidateRun = await prisma.candidateRun.create({
@@ -67,6 +71,7 @@ export class CandidateGenerateWorkflow {
             goods: parsedRequest.goodsDescriptionNormalized,
             confidence: parsedRequest.confidence,
             targetClasses,
+            normalizedGoods: normalizedGoods as any,
           },
         },
       });
@@ -81,6 +86,7 @@ export class CandidateGenerateWorkflow {
         proposedMarkName: parsedRequest.markNameNormalized || "",
         goodsDescription: parsedRequest.goodsDescriptionNormalized || "",
         targetClasses,
+        normalizedGoods,
         count: 8,
         includeCompetitors: true,
       });
@@ -166,4 +172,28 @@ function normalizeTargetClasses(value: unknown): number[] {
         .filter((item) => Number.isInteger(item) && item > 0 && item <= 45)
     )
   );
+}
+
+function normalizeParsedGoods(value: unknown): ParsedNormalizedGood[] {
+  if (!Array.isArray(value)) return [];
+
+  const rows: ParsedNormalizedGood[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    const classNo = typeof row.classNo === "number" ? row.classNo : Number(row.classNo);
+    const term = typeof row.term === "string" ? row.term.trim() : "";
+    if (!Number.isInteger(classNo) || classNo < 1 || classNo > 45 || !term) continue;
+
+    rows.push({
+      classNo,
+      term,
+      kind: row.kind === "service" ? "service" : row.kind === "goods" ? "goods" : undefined,
+      basis: typeof row.basis === "string" ? row.basis : undefined,
+      evidenceLabel: typeof row.evidenceLabel === "string" ? row.evidenceLabel : undefined,
+      evidenceUrl: typeof row.evidenceUrl === "string" ? row.evidenceUrl : undefined,
+    });
+  }
+
+  return rows;
 }

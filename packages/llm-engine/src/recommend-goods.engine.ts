@@ -73,6 +73,7 @@ function normalize(s: string): string {
 function toGeneratedSourceType(
   sourceType: CandidateReferenceGoods["sourceType"]
 ): GeneratedCandidate["sourceType"] {
+  if (sourceType === "claude_normalized_goods") return "ai_generated";
   return sourceType === "internal_official_notice_name" ? "official_notice_name" : "accepted_similar_name";
 }
 
@@ -113,12 +114,18 @@ export class RecommendGoodsEngine {
 
   async recommend(request: CandidateGenerationRequest): Promise<GeneratedCandidate[]> {
     const targetCount = request.count ?? 8;
+    const normalizedGoodsEvidence = normalizedGoodsToEvidence(request);
     const [kiprisEvidence, internalEvidence] = await Promise.all([
       this.findKiprisSimilarGoodsEvidence(request, targetCount * 2),
       this.findInternalGoodsEvidence(request, targetCount * 2),
     ]);
 
-    const referenceGoods = dedupeEvidence([...kiprisEvidence, ...internalEvidence]).slice(
+    const referenceGoods = dedupeEvidence([
+      ...normalizedGoodsEvidence,
+      ...(request.referenceGoods ?? []),
+      ...kiprisEvidence,
+      ...internalEvidence,
+    ]).slice(
       0,
       Math.max(targetCount * 3, 24)
     );
@@ -131,7 +138,18 @@ export class RecommendGoodsEngine {
         "KIPRIS similar-goods evidence must be reviewed first. Internal DB matches are secondary reference evidence. Claude must make the final selection and may use AI-generated candidates only when KIPRIS/internal evidence is insufficient.",
     });
 
-    return mergeEvidenceIntoCandidates(claudeCandidates, referenceGoods).slice(0, targetCount);
+    if (claudeCandidates.length > 0) {
+      return mergeEvidenceIntoCandidates(claudeCandidates, referenceGoods).slice(0, targetCount);
+    }
+
+    if (normalizedGoodsEvidence.length > 0) {
+      console.warn(
+        "[RecommendGoodsEngine] Claude candidate output was empty; using Claude normalization goods as candidate seed."
+      );
+      return normalizedGoodsEvidence.map(evidenceToGeneratedCandidate).slice(0, targetCount);
+    }
+
+    return [];
   }
 
   private async findInternalGoodsEvidence(
@@ -198,7 +216,10 @@ export class RecommendGoodsEngine {
     request: CandidateGenerationRequest,
     limit: number
   ): Promise<CandidateReferenceGoods[]> {
-    const queries = buildSimilarGoodsQueries(request.goodsDescription);
+    const queries = buildSimilarGoodsQueries(
+      request.goodsDescription,
+      request.normalizedGoods?.map((item) => item.term)
+    );
     const classNos = classFilters(request);
     const candidates: CandidateReferenceGoods[] = [];
 
@@ -233,7 +254,7 @@ export class RecommendGoodsEngine {
   }
 }
 
-function buildSimilarGoodsQueries(goodsDescription: string): string[] {
+function buildSimilarGoodsQueries(goodsDescription: string, preferredTerms: string[] = []): string[] {
   const normalized = goodsDescription
     .replace(/[()[\]{}]/g, " ")
     .replace(/\bDXNewton\b/gi, " ")
@@ -245,21 +266,51 @@ function buildSimilarGoodsQueries(goodsDescription: string): string[] {
     .map((part) => part.trim())
     .filter((part) => part.length >= 2 && part.length <= 40);
 
-  return Array.from(new Set([normalized, ...parts]))
+  return Array.from(new Set([...preferredTerms, normalized, ...parts]))
     .filter((query) => query.length >= 2 && query.length <= 80)
-    .slice(0, 4);
+    .slice(0, 6);
 }
 
 function classFilters(request: CandidateGenerationRequest): Array<number | undefined> {
   const classNos = Array.from(
     new Set(
-      (request.targetClasses ?? []).filter(
+      [
+        ...(request.targetClasses ?? []),
+        ...(request.normalizedGoods ?? []).map((item) => item.classNo),
+      ].filter(
         (classNo) => Number.isInteger(classNo) && classNo > 0 && classNo <= 45
       )
     )
   );
   if (classNos.length > 0) return classNos;
   return [request.classNo];
+}
+
+function normalizedGoodsToEvidence(request: CandidateGenerationRequest): CandidateReferenceGoods[] {
+  return (request.normalizedGoods ?? []).map((item) => ({
+    term: item.term,
+    normalizedTerm: item.term,
+    classNo: item.classNo,
+    sourceType: "claude_normalized_goods" as const,
+    confidence: 0.86,
+    rationale: item.basis
+      ? `Claude normalization from customer request and attachments: ${item.basis}`
+      : "Claude normalization from customer request and attachments. Use as primary candidate seed when KIPRIS similar-goods evidence is sparse.",
+    similarityGroupCodes: [],
+    query: item.term,
+  }));
+}
+
+function evidenceToGeneratedCandidate(evidence: CandidateReferenceGoods): GeneratedCandidate {
+  return {
+    term: evidence.term,
+    normalizedTerm: evidence.normalizedTerm,
+    classNo: evidence.classNo,
+    sourceType: toGeneratedSourceType(evidence.sourceType),
+    confidence: evidence.confidence,
+    rationale: evidence.rationale,
+    similarityGroupCodes: evidence.similarityGroupCodes,
+  };
 }
 
 function dedupeEvidence(candidates: CandidateReferenceGoods[]): CandidateReferenceGoods[] {

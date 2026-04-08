@@ -385,6 +385,7 @@ ${request.senderEmail ?? '미기재'}`,
 
 KIPRIS/NICE 분류 검색에 투입할 수 있도록 지정상품 및 지정서비스업 후보를 설계하세요. 반드시 JSON 객체만 출력하세요.
 KIPRIS 유사상품군 근거를 최우선으로 검토하고, 내부 DB 근거는 보조 참고자료로만 사용하세요. 최종 후보 선정 판단은 반드시 Claude가 수행합니다. KIPRIS/내부 DB 근거가 부족할 때만 AI 보완 후보를 추가하세요.
+KIPRIS 유사상품군 API가 오류 또는 빈 결과를 반환할 수 있습니다. 그 경우에도 고객 의뢰, 첨부자료, Claude 정규화 지정상품/서비스업을 근거로 candidates 배열을 반드시 채우세요.
 
 출력 형식:
 {
@@ -403,6 +404,7 @@ KIPRIS 유사상품군 근거를 최우선으로 검토하고, 내부 DB 근거�
 
 작성 기준:
 - 고객이 지정한 targetClasses가 있으면 그 류를 우선 검토하되, 출원 필요성이 낮은 류는 "선택적/생략 가능" 판단 근거를 남기세요.
+- Claude 정규화 지정상품/서비스업은 직전 단계에서 고객 의뢰와 첨부자료를 해석해 만든 1차 판단 결과입니다. KIPRIS 유사상품군 근거가 부족하면 이 목록을 후보 설계의 주 근거로 사용하세요.
 - targetClasses가 없으면 고객 사업 설명을 제9류, 제35류, 제38류, 제41류, 제42류 등 관련 류 관점에서 검토하세요.
 - 실제 출원 명세에 가까운 구체적 표현을 우선하세요.
 - 너무 포괄적인 명칭은 피하고, 필요하면 하드웨어/소프트웨어/서비스를 나누세요.
@@ -419,6 +421,9 @@ ${request.proposedMarkName}
 
 [고객 상품/서비스 설명]
 ${request.goodsDescription}
+
+[Claude 정규화 지정상품/서비스업]
+${JSON.stringify(request.normalizedGoods ?? [], null, 2)}
 
 ${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}
 ${request.targetClasses?.length ? `[고객 요청/Claude 추출 대상 류]\n${request.targetClasses.map((classNo) => `제${classNo}류`).join(', ')}` : ''}

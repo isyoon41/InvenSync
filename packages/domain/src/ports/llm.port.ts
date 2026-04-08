@@ -48,6 +48,7 @@ export interface CandidateGenerationRequest {
   goodsDescription: string;
   classNo?: number;
   targetClasses?: number[];
+  normalizedGoods?: ParsedNormalizedGood[];
   count?: number;
   includeCompetitors?: boolean;
   referenceGoods?: CandidateReferenceGoods[];
@@ -58,7 +59,11 @@ export interface CandidateReferenceGoods {
   term: string;
   normalizedTerm: string;
   classNo: number;
-  sourceType: "kipris_similar_goods" | "internal_official_notice_name" | "internal_accepted_similar_name";
+  sourceType:
+    | "kipris_similar_goods"
+    | "claude_normalized_goods"
+    | "internal_official_notice_name"
+    | "internal_accepted_similar_name";
   confidence: number;
   rationale: string;
   similarityGroupCodes?: string[];
