@@ -196,6 +196,15 @@ ${request.classNo ? `[참고 류] ${request.classNo}류` : ''}
         return `${i + 1}. 상표명: "${r.markName}" / 출원인: ${r.applicantName ?? '미상'} / ${score}${status}${classInfo}${appNo}`;
       })
       .join('\n');
+    const candidateList = (request.candidateGoods ?? [])
+      .slice(0, 12)
+      .map((candidate, i) => {
+        const codes = candidate.similarityGroupCodes?.length
+          ? ` / 유사군: ${candidate.similarityGroupCodes.join(', ')}`
+          : '';
+        return `${i + 1}. ${candidate.normalizedTerm ?? candidate.term} / 제${candidate.classNo}류 / 출처: ${candidate.sourceType}${codes} / 근거: ${candidate.rationale ?? '미기재'}`;
+      })
+      .join('\n');
 
     const clientGreeting = request.clientName
       ? `${request.clientName}${request.companyName ? ` (${request.companyName})` : ''}` + ' 고객님'
@@ -221,11 +230,15 @@ ${request.classNo ? `[참고 류] ${request.classNo}류` : ''}
 [KIPRIS 유사상표 검색 결과 (상위 ${request.searchResults.slice(0, 10).length}건)]
 ${similarList || '검색 결과 없음 — 충돌 상표 없음'}
 
+[지정상품 후보 및 유사군 근거]
+${candidateList || '지정상품 후보 근거 없음'}
+
 ---
 
 각 항목을 아래 조건에 따라 작성하세요:
 
 1. summary (검토 요약)
+   - "1. 지정상품의 선정" 제목을 포함하고, 류별 지정상품 후보와 KIPRIS 유사상품군/유사군 코드 근거를 정리
    - 검색된 유사상표 총 건수와 주요 현황을 첫 문장에 명시
    - 위험 수준(높음/중간/낮음) 및 근거를 2~3문장으로 서술
    - KIPRIS 검색 데이터를 근거로 사용, 출원인·유사도·상태 언급
@@ -241,6 +254,8 @@ ${similarList || '검색 결과 없음 — 충돌 상표 없음'}
    - 반드시 "출원 권장", "조건부 출원", "출원 재검토 필요" 중 하나로 시작
    - 구체적 근거(유사상표 현황, 식별력, 지정상품 범위)를 2~3문장으로 설명
    - 조건이 있는 경우 명시
+   - 행정처리 이력과 분류코드 변동 이력은 현재 자동 조회되지 않은 경우 "추가 확인 필요"로 명시
+   - 유사군 코드가 있는 경우 최종 제출 전 최신 분류코드 변동 이력 확인을 권고
 
 4. clientReplyDraft (고객 회신 초안)
    다음 구조를 반드시 지키되, 각 단락 사이에 빈 줄(\\n\\n)을 넣어 단락을 명확히 구분하세요.

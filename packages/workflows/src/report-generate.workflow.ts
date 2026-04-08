@@ -15,6 +15,16 @@ export interface ReportGenerateResult {
   reviewReport: ReviewReport;
 }
 
+function getCandidateSimilarityCodes(candidate: any): string[] {
+  if (Array.isArray(candidate.similarityGroupCodes)) return candidate.similarityGroupCodes;
+  if (Array.isArray(candidate.similarityGroups)) {
+    return candidate.similarityGroups
+      .map((group: { similarityGroupCode?: string }) => group.similarityGroupCode)
+      .filter((code: unknown): code is string => typeof code === "string" && code.length > 0);
+  }
+  return [];
+}
+
 export class ReportGenerateWorkflow {
   constructor(private repositories = getRepositoryContainer()) {}
 
@@ -37,6 +47,10 @@ export class ReportGenerateWorkflow {
       const searchResults = await this.repositories.searchResults.findBySearchJob(
         request.searchJobId
       );
+      const searchJob = await this.repositories.searchJobs.findById(request.searchJobId);
+      const candidateGoods = searchJob?.candidateRunId
+        ? await this.repositories.candidates.findByCandidateRun(searchJob.candidateRunId)
+        : [];
 
       // 최신 파싱 결과 조회
       const parsedRequest = await prisma.parsedRequest.findFirst({
@@ -62,6 +76,14 @@ export class ReportGenerateWorkflow {
           applicationNumber: r.applicationNumber ?? undefined,
           classNo: r.classNo ?? undefined,
         })),
+        candidateGoods: candidateGoods.map((candidate) => ({
+          term: candidate.term,
+          normalizedTerm: candidate.normalizedTerm,
+          classNo: candidate.classNo,
+          sourceType: candidate.sourceType,
+          rationale: candidate.rationale,
+          similarityGroupCodes: getCandidateSimilarityCodes(candidate),
+        })),
         clientName,
         companyName,
         clientEmail,
@@ -74,6 +96,7 @@ export class ReportGenerateWorkflow {
       const reviewReport = await prisma.reviewReport.create({
         data: {
           inquiryId: inquiry.id,
+          candidateRunId: searchJob?.candidateRunId,
           searchJobId: request.searchJobId,
           summary: generatedReport.summary,
           riskNote: generatedReport.riskNote,

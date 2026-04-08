@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CandidateGenerateWorkflow } from '@ip-review/workflows';
 import { getRepositoryContainer } from '@ip-review/db';
-import { createLLMPort } from '@ip-review/llm-engine';
+import { createLLMPort, type SimilarGoodsLookupPort } from '@ip-review/llm-engine';
+import { KiprisAdapter } from '@ip-review/kipris-client';
+
+function createSimilarGoodsPort(): SimilarGoodsLookupPort | undefined {
+  if (process.env.TRADEMARK_PROVIDER_MODE !== 'kipris' || !process.env.KIPRIS_API_KEY) {
+    return undefined;
+  }
+
+  return new KiprisAdapter(process.env.KIPRIS_API_KEY);
+}
 
 /**
  * POST /api/inquiries/[id]/process
@@ -36,6 +45,7 @@ export async function POST(
     const result = await workflow.execute({
       inquiryId: params.id,
       llmPort,
+      similarGoodsPort: createSimilarGoodsPort(),
     });
 
     return NextResponse.json({

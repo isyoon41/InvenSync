@@ -32,6 +32,12 @@ function getSimilarityCode(candidate: GoodsCandidate): string | undefined {
   return (groups.find((g) => g.isPrimary) ?? groups[0]).similarityGroupCode;
 }
 
+function getSearchResultSimilarityCodes(result: any): string[] {
+  if (Array.isArray(result.similarityGroupCodes)) return result.similarityGroupCodes;
+  if (Array.isArray(result.rawResponse?.similarityCodes)) return result.rawResponse.similarityCodes;
+  return [];
+}
+
 // 후보 1개에 대해 실행할 검색 요청 목록 생성
 function buildSearchRequests(candidate: GoodsCandidate): TrademarkSearchRequest[] {
   const requests: TrademarkSearchRequest[] = [];
@@ -156,6 +162,15 @@ export class SearchExecuteWorkflow {
                 rawXml: result.rawXml,
               },
             });
+            const similarityGroupCodes = getSearchResultSimilarityCodes(result);
+            if (similarityGroupCodes.length > 0) {
+              await prisma.searchResultSimilarityGroup.createMany({
+                data: similarityGroupCodes.map((similarityGroupCode) => ({
+                  searchResultId: storedResult.id,
+                  similarityGroupCode,
+                })),
+              });
+            }
             allResults.push(storedResult);
           }
         }

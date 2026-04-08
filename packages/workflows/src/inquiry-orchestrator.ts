@@ -6,6 +6,7 @@ import { CandidateGenerateWorkflow } from "./candidate-generate.workflow";
 import { SearchExecuteWorkflow } from "./search-execute.workflow";
 import { ReportGenerateWorkflow } from "./report-generate.workflow";
 import { prisma } from "@ip-review/db";
+import type { SimilarGoodsLookupPort } from "@ip-review/llm-engine";
 
 export interface InquiryProcessingPipeline {
   inquiry: Inquiry;
@@ -30,7 +31,8 @@ export class InquiryOrchestrator {
   async processInquiryFull(
     inquiryId: string,
     llmPort: ILLMPort,
-    searchPort: ITrademarkSearchPort
+    searchPort: ITrademarkSearchPort,
+    similarGoodsPort?: SimilarGoodsLookupPort
   ): Promise<InquiryProcessingPipeline> {
     let inquiry = await this.repositories.inquiries.findById(inquiryId);
     if (!inquiry) {
@@ -50,6 +52,7 @@ export class InquiryOrchestrator {
       const candidateResult = await this.candidateWorkflow.execute({
         inquiryId,
         llmPort,
+        similarGoodsPort,
       });
 
       // Step 3: Execute search
@@ -103,7 +106,8 @@ export class InquiryOrchestrator {
   async resumeFromParsed(
     inquiryId: string,
     llmPort: ILLMPort,
-    searchPort: ITrademarkSearchPort
+    searchPort: ITrademarkSearchPort,
+    similarGoodsPort?: SimilarGoodsLookupPort
   ): Promise<InquiryProcessingPipeline> {
     const inquiry = await this.repositories.inquiries.findById(inquiryId);
     if (!inquiry) {
@@ -118,7 +122,7 @@ export class InquiryOrchestrator {
       );
     }
 
-    return this.processInquiryFull(inquiryId, llmPort, searchPort);
+    return this.processInquiryFull(inquiryId, llmPort, searchPort, similarGoodsPort);
   }
 
   async cancelProcessing(inquiryId: string): Promise<void> {

@@ -16,6 +16,13 @@ import type {
   CandidateGenerationRequest,
 } from "@ip-review/domain";
 
+export interface SimilarGoodsLookupPort {
+  searchSimilarGoods(
+    query: string,
+    classNo?: number
+  ): Promise<Array<{ goodsName: string; similarCode: string; classNo: string }>>;
+}
+
 // ─── Jaro-Winkler 유사도 ───────────────────────────────────────────────────
 
 function jaroSimilarity(s: string, t: string): number {
@@ -88,7 +95,8 @@ const SIMILARITY_THRESHOLD = 0.62; // 이 이상이면 DB 매칭으로 인정
 export class RecommendGoodsEngine {
   constructor(
     private goodsTermPort: IGoodsTermPort,
-    private llmPort: ILLMPort
+    private llmPort: ILLMPort,
+    private similarGoodsPort?: SimilarGoodsLookupPort
   ) {}
 
   async recommend(
@@ -178,9 +186,17 @@ export class RecommendGoodsEngine {
       return dbMatches;
     }
 
+    // 4. KIPRIS 유사상품군 검색 결과를 후보 설계에 반영
+    const kiprisMatches = await this.findKiprisSimilarGoods(request, targetCount - dbMatches.length);
+    const mergedEvidenceMatches = dedupeCandidates([...dbMatches, ...kiprisMatches]).slice(0, targetCount);
+
+    if (mergedEvidenceMatches.length >= targetCount) {
+      return mergedEvidenceMatches;
+    }
+
     // 5. 부족한 수만큼 LLM 후보 추가 생성
-    const needed = targetCount - dbMatches.length;
-    const dbTermNames = new Set(dbMatches.map((c) => c.normalizedTerm));
+    const needed = targetCount - mergedEvidenceMatches.length;
+    const existingTermNames = new Set(mergedEvidenceMatches.map((c) => c.normalizedTerm ?? c.term));
 
     let aiCandidates: GeneratedCandidate[] = [];
     try {
@@ -194,9 +210,72 @@ export class RecommendGoodsEngine {
 
     // 6. 중복 제거 (DB에 이미 있는 용어 제외)
     const deduped = aiCandidates
-      .filter((c) => !dbTermNames.has(c.normalizedTerm))
+      .filter((c) => !existingTermNames.has(c.normalizedTerm ?? c.term))
       .slice(0, needed);
 
-    return [...dbMatches, ...deduped];
+    return [...mergedEvidenceMatches, ...deduped];
   }
+
+  private async findKiprisSimilarGoods(
+    request: CandidateGenerationRequest,
+    limit: number
+  ): Promise<GeneratedCandidate[]> {
+    if (!this.similarGoodsPort || limit <= 0) return [];
+
+    const queries = buildSimilarGoodsQueries(request.goodsDescription);
+    const candidates: GeneratedCandidate[] = [];
+
+    for (const query of queries) {
+      try {
+        const items = await this.similarGoodsPort.searchSimilarGoods(query, request.classNo);
+        for (const item of items) {
+          const classNo = parseInt(item.classNo, 10);
+          if (!item.goodsName || !Number.isFinite(classNo)) continue;
+
+          candidates.push({
+            term: item.goodsName,
+            normalizedTerm: item.goodsName,
+            classNo,
+            sourceType: "accepted_similar_name",
+            confidence: 0.82,
+            rationale: `KIPRIS 유사상품군 검색("${query}") 결과를 반영했습니다. 유사군 코드: ${item.similarCode || "미상"}`,
+            similarityGroupCodes: item.similarCode ? [item.similarCode] : [],
+          });
+        }
+      } catch (error) {
+        console.warn(`[RecommendGoodsEngine] KIPRIS 유사상품군 검색 실패 (query=${query}):`, error);
+      }
+
+      if (candidates.length >= limit) break;
+    }
+
+    return dedupeCandidates(candidates).slice(0, limit);
+  }
+}
+
+function buildSimilarGoodsQueries(goodsDescription: string): string[] {
+  const normalized = goodsDescription
+    .replace(/[()[\]{}]/g, " ")
+    .replace(/\bDXNewton\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const parts = normalized
+    .split(/[,，;；/\n]| 및 | 또는 | 관련 | 검토 | 지시 | 드립니다|해주세요|합니다|출원|상표/g)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 2 && part.length <= 40);
+
+  return Array.from(new Set([normalized, ...parts]))
+    .filter((query) => query.length >= 2 && query.length <= 80)
+    .slice(0, 4);
+}
+
+function dedupeCandidates(candidates: GeneratedCandidate[]): GeneratedCandidate[] {
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    const key = `${candidate.classNo}:${normalize(candidate.normalizedTerm ?? candidate.term)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

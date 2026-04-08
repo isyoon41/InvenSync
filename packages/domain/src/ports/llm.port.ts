@@ -44,6 +44,14 @@ export interface ReportGenerationRequest {
     applicationNumber?: string;
     classNo?: number;
   }>;
+  candidateGoods?: Array<{
+    term: string;
+    normalizedTerm?: string;
+    classNo: number;
+    sourceType: string;
+    rationale?: string;
+    similarityGroupCodes?: string[];
+  }>;
   // 고객 정보 (의뢰 등록 시 입력)
   clientName?: string;
   companyName?: string;

@@ -142,6 +142,18 @@ function topSearchResults(request: ReportGenerationRequest) {
   }));
 }
 
+function topCandidateGoods(request: ReportGenerationRequest) {
+  return (request.candidateGoods ?? []).slice(0, 12).map((candidate, index) => ({
+    index: index + 1,
+    term: candidate.term,
+    normalizedTerm: candidate.normalizedTerm ?? candidate.term,
+    classNo: candidate.classNo,
+    sourceType: candidate.sourceType,
+    similarityGroupCodes: candidate.similarityGroupCodes ?? [],
+    rationale: candidate.rationale ?? '',
+  }));
+}
+
 export class AnthropicLLMAdapter implements ILLMPort {
   constructor(
     private readonly apiKey: string,
@@ -260,14 +272,15 @@ ${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}`,
 - 1. 지정상품의 선정: 류별 표 형식에 가까운 문장과 bullet 목록
 - 2. 추가 류 출원 필요성 검토: 필요/선택/생략 가능 여부와 조건
 - 3. 등록가능성 검토: 식별력, 유사상표, 유사군 또는 상품 범위별 위험도
-- 4. 종합 의견: 류별 출원 권고, 등록가능성, 주요 쟁점
+- 4. 행정처리 이력 및 분류코드 변동 확인 필요성: 현재 제공 데이터로 확인 가능한 상태와 추가 확인이 필요한 지점
+- 5. 종합 의견: 류별 출원 권고, 등록가능성, 주요 쟁점
 - 말미: 추가 문의 안내와 담당 변리사 서명 자리
 
 출력 형식:
 {
   "summary": "1. 지정상품의 선정 섹션. 류별 지정상품 목록을 포함",
   "riskNote": "3. 등록가능성 검토 섹션. 위험도와 선행상표 분석 포함",
-  "recommendation": "4. 종합 의견 섹션. 출원 권고와 보완 필요사항 포함",
+  "recommendation": "4. 행정처리 이력 및 분류코드 변동 확인 필요성 + 5. 종합 의견 섹션. 출원 권고와 보완 필요사항 포함",
   "clientReplyDraft": "고객 회신 메일 본문. 인사말, 검토 결과 요약, 첨부/본문 보고서 안내, 다음 액션 포함"
 }
 
@@ -275,6 +288,9 @@ ${request.classNo ? `[참고 류]\n제${request.classNo}류` : ''}`,
 - 단정적 등록 가능 보장은 금지하고, '가능성이 있습니다', '검토가 필요합니다'처럼 전문가 검토 초안의 톤을 유지하세요.
 - 유사상표 검색 결과가 부족하면 부족하다고 명시하고 수동 검토 필요성을 적으세요.
 - 위험도는 높음/중간/낮음 중 하나를 반드시 포함하세요.
+- 지정상품 선정에는 후보의 sourceType, rationale, similarityGroupCodes를 근거로 KIPRIS 유사상품군/공식 명칭/AI 보완 여부를 구분해 쓰세요.
+- 상표 출원 속보 데이터는 선행상표 검색의 1차 근거로 쓰고, 상표 행정처리 이력과 상표 분류코드 변동 이력은 현재 자동 조회되지 않은 경우 "추가 확인 필요"로 명시하세요.
+- 분류코드나 유사군 코드가 있는 경우, 그 코드가 변동될 수 있음을 전제로 최종 제출 전 최신 분류코드 변동 이력 확인을 권고하세요.
 - 고객에게 바로 보낼 수 있게 공손하고 명확한 한국어를 사용하세요.
 
 [검토 상표명]
@@ -282,6 +298,9 @@ ${request.markName}
 
 [상품/서비스 및 검토 요청 내용]
 ${request.goods}
+
+[지정상품 후보 및 유사군 근거]
+${JSON.stringify(topCandidateGoods(request), null, 2)}
 
 [유사상표 검색 결과]
 ${JSON.stringify(topSearchResults(request), null, 2)}

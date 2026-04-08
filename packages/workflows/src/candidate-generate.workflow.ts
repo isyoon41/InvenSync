@@ -2,11 +2,12 @@ import type { ILLMPort, GeneratedCandidate } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
-import { RecommendGoodsEngine } from "@ip-review/llm-engine";
+import { RecommendGoodsEngine, type SimilarGoodsLookupPort } from "@ip-review/llm-engine";
 
 export interface CandidateGenerateRequest {
   inquiryId: string;
   llmPort: ILLMPort;
+  similarGoodsPort?: SimilarGoodsLookupPort;
   runVersion?: number;
 }
 
@@ -66,7 +67,8 @@ export class CandidateGenerateWorkflow {
       // 상품 후보 추천 엔진: DB(공식·유사 인정 명칭) + LLM(AI 후보) 혼합 생성
       const engine = new RecommendGoodsEngine(
         this.repositories.goodsTerms,
-        request.llmPort
+        request.llmPort,
+        request.similarGoodsPort
       );
       const generatedCandidates = await engine.recommend({
         proposedMarkName: parsedRequest.markNameNormalized || "",
@@ -77,8 +79,8 @@ export class CandidateGenerateWorkflow {
 
       // Store candidates
       const storedCandidates = await Promise.all(
-        generatedCandidates.map((candidate, index) =>
-          prisma.goodsCandidate.create({
+        generatedCandidates.map(async (candidate, index) => {
+          const storedCandidate = await prisma.goodsCandidate.create({
             data: {
               candidateRunId: candidateRun.id,
               term: candidate.term,
@@ -89,8 +91,21 @@ export class CandidateGenerateWorkflow {
               rationale: candidate.rationale,
               sortOrder: index,
             },
-          })
-        )
+          });
+
+          const similarityGroupCodes = candidate.similarityGroupCodes ?? [];
+          if (similarityGroupCodes.length > 0) {
+            await prisma.goodsCandidateSimilarityGroup.createMany({
+              data: similarityGroupCodes.map((similarityGroupCode, codeIndex) => ({
+                goodsCandidateId: storedCandidate.id,
+                similarityGroupCode,
+                isPrimary: codeIndex === 0,
+              })),
+            });
+          }
+
+          return storedCandidate;
+        })
       );
 
       // Update candidate run state
