@@ -28,7 +28,17 @@ function buildKiprisUrl(applicationNumber?: string, markName?: string): string {
 
 /** LLM이 JSON에 리터럴 \n 을 출력하는 경우를 실제 개행으로 정규화 */
 function normalizeNewlines(text: string): string {
-  return text.replace(/\\n/g, '\n');
+  return text
+    .replace(/\\n/g, '\n')
+    .replace(/```+/g, '')
+    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/gu, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function renderLines(para: string) {
@@ -84,7 +94,7 @@ function EvidenceBadge({ result, index }: { result: ReviewEvidenceSearchResult; 
 
 /* ── Section Card ────────────────────────────────────────────── */
 interface SectionProps {
-  icon: string;
+  icon?: string;
   title: string;
   accentColor: string;
   headerBg: string;
@@ -97,7 +107,7 @@ function SectionCard({ icon, title, accentColor, headerBg, children }: SectionPr
       style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
     >
       <div className={`px-5 py-3.5 flex items-center gap-2.5 ${headerBg} border-b border-slate-100`}>
-        <span className="text-base">{icon}</span>
+        {icon ? <span className="text-base">{icon}</span> : null}
         <h2 className={`text-sm font-bold uppercase tracking-wide ${accentColor}`}>{title}</h2>
       </div>
       <div className="px-5 py-4">
@@ -292,7 +302,7 @@ export function ReviewReport({
       </div>
 
       {/* 지정상품의 선정 */}
-      <SectionCard icon="📋" title="1. 지정상품의 선정" accentColor="text-blue-700" headerBg="bg-blue-50">
+      <SectionCard title="1. 지정상품의 선정" accentColor="text-blue-700" headerBg="bg-blue-50">
         {editMode ? (
           <textarea
             value={formData.summary}
@@ -309,7 +319,7 @@ export function ReviewReport({
       </SectionCard>
 
       {/* 등록가능성 검토 */}
-      <SectionCard icon="⚠️" title="2. 등록가능성 및 위험도 검토" accentColor="text-red-700" headerBg="bg-red-50">
+      <SectionCard title="2. 등록가능성 및 위험도 검토" accentColor="text-red-700" headerBg="bg-red-50">
         {editMode ? (
           <textarea
             value={formData.riskNote}
@@ -340,7 +350,7 @@ export function ReviewReport({
       </SectionCard>
 
       {/* 종합 의견 */}
-      <SectionCard icon="✅" title="3. 종합 의견" accentColor="text-emerald-700" headerBg="bg-emerald-50">
+      <SectionCard title="3. 종합 의견" accentColor="text-emerald-700" headerBg="bg-emerald-50">
         {editMode ? (
           <textarea
             value={formData.recommendation}
@@ -359,7 +369,6 @@ export function ReviewReport({
       {/* 고객 회신 초안 */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}>
         <div className="px-5 py-3.5 flex items-center gap-2.5 bg-violet-50 border-b border-slate-100">
-          <span className="text-base">✉️</span>
           <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700">4. 고객 회신 메일 초안</h2>
           {!editMode && report.clientReplyDraft && (
             <button
@@ -394,7 +403,7 @@ export function ReviewReport({
       </div>
 
       {/* 내부 메모 */}
-      <SectionCard icon="🔒" title="내부 메모" accentColor="text-slate-600" headerBg="bg-slate-50">
+      <SectionCard title="내부 메모" accentColor="text-slate-600" headerBg="bg-slate-50">
         {editMode ? (
           <textarea
             value={formData.internalNote}
@@ -416,7 +425,6 @@ export function ReviewReport({
           style={{ boxShadow: '0 1px 4px rgba(15,23,42,0.06)' }}
         >
           <div className="px-5 py-3.5 bg-amber-50 border-b border-slate-100 flex items-center gap-2.5">
-            <span className="text-base">🔍</span>
             <h2 className="text-sm font-bold uppercase tracking-wide text-amber-700">참고 상표 (KIPRIS 근거 자료)</h2>
             <span className="ml-auto text-xs text-slate-400">{evidenceItems.length}건</span>
           </div>

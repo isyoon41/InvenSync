@@ -111,8 +111,22 @@ function extractFirstBalancedObject(text: string): string | null {
   return null;
 }
 
+function sanitizeReportText(text: string): string {
+  return text
+    .replace(/\\n/g, '\n')
+    .replace(/```+/g, '')
+    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F]/gu, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function normalizeGeneratedText(value: unknown, fallback = ''): string {
-  return asString(value, fallback).replace(/\\n/g, '\n');
+  return sanitizeReportText(asString(value, fallback));
 }
 
 function delay(ms: number): Promise<void> {
