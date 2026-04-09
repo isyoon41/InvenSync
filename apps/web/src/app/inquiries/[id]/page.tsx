@@ -472,7 +472,8 @@ export default function InquiryDetailPage({ params }: PageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const result = await res.json();
+      const raw = await res.text();
+      const result: any = raw ? JSON.parse(raw) : {};
       if (!res.ok) {
         alert(`정규화 처리 중 오류가 발생했습니다: ${result.error || '알 수 없는 오류'}`);
         return;
@@ -502,7 +503,13 @@ export default function InquiryDetailPage({ params }: PageProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const result = await res.json();
+      const raw = await res.text();
+      let result: any = null;
+      try {
+        result = raw ? JSON.parse(raw) : null;
+      } catch {
+        result = null;
+      }
       if (!res.ok || !result.success) {
         setProcessMessage(`오류: ${result.error || '지정상품 후보 생성에 실패했습니다'}`);
         return;
@@ -542,7 +549,13 @@ export default function InquiryDetailPage({ params }: PageProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inquiryId: params.id }),
       });
-      const result = await res.json();
+      const raw = await res.text();
+      let result: any = null;
+      try {
+        result = raw ? JSON.parse(raw) : null;
+      } catch {
+        result = null;
+      }
       if (res.ok) {
         setReportMessage('✓ 검토 리포트가 생성되었습니다. 검토 리포트 페이지로 이동합니다...');
         const updatedRes = await fetch(`/api/inquiries/${params.id}`);
@@ -550,7 +563,11 @@ export default function InquiryDetailPage({ params }: PageProps) {
         // 리포트 생성 완료 → 검토 리포트 페이지로 이동
         setTimeout(() => router.push('/review'), 1500);
       } else {
-        setReportMessage(`오류: ${result.error}`);
+        const fallbackMessage =
+          res.status === 504
+            ? '검토 의견서 생성 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.'
+            : `요청 처리 중 오류가 발생했습니다. (HTTP ${res.status})`;
+        setReportMessage(`오류: ${result?.error || fallbackMessage}`);
       }
     } catch (error) {
       console.error('Failed to generate report:', error);

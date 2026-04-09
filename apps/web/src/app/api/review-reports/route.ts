@@ -4,7 +4,7 @@ import { ReportGenerateWorkflow } from '@ip-review/workflows';
 import { createClaudeOnlyLLMPort } from '@ip-review/llm-engine';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * POST /api/review-reports
