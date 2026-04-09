@@ -2,7 +2,7 @@ import type { ILLMPort, ReviewReport } from "@ip-review/domain";
 import { ValidationError, InquiryProcessingError } from "@ip-review/domain";
 import { getRepositoryContainer } from "@ip-review/db";
 import { prisma } from "@ip-review/db";
-import { getInquiryAttachmentContexts } from "./attachment-context";
+import { getReportAttachmentContexts } from "./attachment-context";
 
 export interface ReportGenerateRequest {
   inquiryId: string;
@@ -122,7 +122,7 @@ export class ReportGenerateWorkflow {
         parsedGoods: parsedRequest?.goodsDescriptionNormalized ?? undefined,
         industry: parsedRequest?.industryGuess ?? undefined,
         handlerName,
-        attachments: getInquiryAttachmentContexts(inquiry),
+        attachments: getReportAttachmentContexts(inquiry),
       });
 
       // Create review report

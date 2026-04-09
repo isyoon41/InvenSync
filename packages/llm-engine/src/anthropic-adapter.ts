@@ -212,7 +212,9 @@ function formatAttachmentText(attachments: LLMAttachmentContext[] | undefined): 
       return `${base}\n--- 추출 텍스트 ---\n${attachment.textContent}`;
     }
     if (attachment.kind === 'pdf' || attachment.kind === 'image') {
-      return `${base}\n원본 파일은 Claude의 ${attachment.kind === 'pdf' ? 'document' : 'image'} 입력 블록으로 함께 제공됩니다.`;
+      return attachment.base64Data
+        ? `${base}\n원본 파일은 Claude의 ${attachment.kind === 'pdf' ? 'document' : 'image'} 입력 블록으로 함께 제공됩니다.`
+        : `${base}\n원본 파일은 이전 단계에서 분석되었으며, 보고서 단계에서는 파일 메타데이터와 추출 요약만 반영됩니다.`;
     }
     return `${base}${attachment.error ? `\n분석 제외 사유: ${attachment.error}` : ''}`;
   });
